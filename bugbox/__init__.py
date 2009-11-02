@@ -730,7 +730,7 @@ class BugBox(Provider):
         else:
           cmd.append(str(arg))
 
-    return self.call(*cmd, cwd=self._path)
+    return self.call(cwd=self._path, *cmd)
     
   def iscached(self, key):
     return self._cache.has_key(key)
