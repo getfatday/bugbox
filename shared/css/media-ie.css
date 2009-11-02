@@ -1,0 +1,32 @@
+#header > a {
+    z-index: 10;
+}
+ 
+#content, #footer, div.list-title {
+    position: relative;
+}
+ 
+.corner
+{
+  width: 20px; height: 20px;
+  position: absolute;
+  background-repeat: no-repeat;
+  background-image: url(../img/ie/content-corner.gif)
+}
+
+div.list-title > .corner { width: 10px; height: 10px;}
+ 
+.top.left.corner
+{ background-position: top left; }
+ 
+.top.right.corner
+{ background-position: top right; }
+ 
+.bottom.left.corner
+{ background-position: bottom left; }
+ 
+.bottom.right.corner
+{ background-position: bottom right; }
+
+div.list-title > .top.corner
+{ background-image: url(../img/ie/list-title-corner.gif); }

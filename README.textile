@@ -1,0 +1,73 @@
+h1. BugBox Module
+
+Bugbox is a "GIT":http://git-scm.com/ based system to post bug resolutions as
+an alternative to submitting patches.
+
+h2. Installing
+
+Run the following shell commands:
+
+<pre>
+git clone git://github.com/getfatday/bugbox.git
+cd bugbox
+./setup.py install
+</pre>
+
+h2. Creating a BugBox Repository
+
+Run the following shell commands, replace GIT_DIR with you local path:
+
+<pre>
+export GIT_DIR="/example/path/bugboxd.git"
+git --bare init
+</pre>
+
+Specify a url for external access:
+
+<pre>
+git config bugbox.url "ssh://example.com/bugbox.git"
+</pre>
+
+Specify a ticketing system, multiple systems can be defined with the this
+pattern @ticket.<system>@:
+
+<pre>
+git config ticket.bz.name BugZilla
+git config ticket.bz.url http://bugzilla.example.com
+</pre>
+
+Adding GIT hooks:
+
+<pre>
+cp /source/bugbox/shared/hooks/* $GIT_DIR/hooks
+</pre>
+
+h2. Running the Web Service
+
+Creating the "CherryPy":http://www.cherrypy.org/ config:
+
+<pre>
+cat > /example/path/bugbox.cfg << EOF
+[global]
+bugbox.dir = "/example/path/bugboxd.git"
+EOF
+</pre>
+
+Running the "CherryPy":http://www.cherrypy.org/ Daemon:
+
+<pre>
+cherryd -c /example/path/bugbox.cfg -i bugbox.web
+</pre>
+
+Mounting to an existing daemon tree:
+
+<pre>
+[global]
+...
+tree.bugbox = cherrypy.tree.mount(bugbox.web.root, '/bugbox', '/example/path/bugbox.cfg')
+...
+</pre>
+
+h2. Feedback
+
+Shoot me an "email":mailto:getfatday@gmail.com with any feedback.

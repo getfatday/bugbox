@@ -1,0 +1,145 @@
+#!/usr/bin/env python
+# encoding: utf-8
+#
+
+import sys, os, subprocess, re
+
+# Set to '1' to print executed commands
+ENV_DEBUG="BUGBOX_DEBUG"
+REF_TICKET = re.compile("refs/heads/(?P<system>[^/]*)/(?P<ticket>[^/]*)(/(?P<label>[^/]*))?")
+
+
+def _parse_ref(reference):
+  
+  m = REF_TICKET.match(reference)
+  
+  if m:
+    m_dict = m.groupdict()
+    return (m_dict["system"], m_dict["ticket"], m_dict["label"])
+  
+  return (None, None, None)
+
+def _system_hook(system):
+  
+  hook = os.path.join(os.getcwd(), "hooks", "update.%s" % system)
+  
+  if os.path.exists(hook):
+    o, e, v = _exec(hook)
+    if o: print o
+    
+    return v
+    
+  return 0
+
+def _vars():
+  
+  o, e, v = _git("var", "-l")
+  return dict([l.split("=") for l in o.splitlines()])
+
+def _systems(variables):
+
+  systems = {}
+  var = variables
+    
+  for k, v in var.items():
+    if k.startswith("ticket"):
+      parts = k.split(".")
+      if len(parts) > 2:
+        if parts[1] not in systems:
+          systems[parts[1]] = {}
+        
+        systems[parts[1]][".".join(parts[2:])] = v
+          
+  return systems
+
+def _exec(*args):
+  p = subprocess.Popen(args, cwd=os.getcwd(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+  o, e = p.communicate()
+  
+  if o: o = o.strip()
+  if e: e = e.strip()
+  
+  return (o, e, p.returncode)
+  
+def _git(global_args=None, *args):
+  
+  cmd = ["git",]
+  
+  for arg in (global_args, args):
+    if arg:
+      if type(arg) in (list, tuple):
+        cmd += list(arg)
+      else:
+        cmd.append(str(arg))
+  
+  return _exec(*cmd)
+  
+def _error(value):
+  print >> sys.stderr,  "--> %s" % value
+  return 1
+
+def _revision_type(revision):
+  if revision == "0" * 40:
+    return "delete"
+  else:
+    return _git("cat-file", "-t", revision)[0]
+
+if __name__ == '__main__':
+  
+  def main(cmd, *argv):
+    
+    if not os.environ.has_key("GIT_DIR") or len(os.environ["GIT_DIR"]) == 0:
+      return _error("""Don't run this script from the command line.
+ (if you want, you could supply GIT_DIR then run
+  %s <ref> <oldrev> <newrev>)""" % cmd)
+    
+    if len(argv) < 3:
+      return _error("Usage: %s <ref> <oldrev> <newrev>" % cmd)
+    
+    refname, oldrev, newrev = argv[0:3]
+    
+    revtype = _revision_type(newrev)
+    
+    system, ticket, label = _parse_ref(refname)
+    
+    if not system:
+      return _error("""Reference name '%s' is not allowed.
+      
+Please use the format system/number/label:
+
+For Example:
+
+jira/12345
+jira/12345/AlarmClock
+
+""")
+    
+    v = _vars()
+    systems = _systems(v)
+    
+    if len(systems) == 0:
+      return _error("""Your GIT configuration does not contain any ticket systems.
+Please add a ticket system to your configuration.
+
+For example in your GIT config add:
+
+[ticket 'bz']
+name=BugZilla
+url=http://bugzilla.example.com
+
+""")
+    
+    if system not in systems:
+      
+      return _error("""Ticket system '%s' is unknown.
+      
+Please use one of the following:
+
+%s
+""" % (system, os.linesep.join(["%-8s<%s %s>" % (k, systems[k].get("name", "unknown"), systems[k].get("url", "unknown")) for k in systems.keys()])))
+    
+    rval = _system_hook(system)
+      
+    return rval
+  
+  sys.exit(main(*sys.argv))

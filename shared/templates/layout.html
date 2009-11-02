@@ -1,0 +1,46 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:o="http://bugbox.localhost/" py:strip="">
+  <xi:include href="types.html" />
+  <py:match path="head" once="true">
+    <head py:attrs="select('@*')">
+      <title py:with="title = list(select('title/text()'))">
+        BugBox<py:if test="title">: ${title}</py:if>
+      </title>
+      <base href="${url()}" />
+      <link href="${url('/css/reset.css')}" media="screen" rel="stylesheet" type="text/css" />
+      <link href="${url('/css/type.css')}" media="screen" rel="stylesheet" type="text/css" />
+      <link href="${url('/css/media.css')}" media="screen" rel="stylesheet" type="text/css" />
+      <link rel="icon" type="image/gif" href="${url('/img/ticket.gif')}" />
+      
+      <link py:if="browser == 'msie'" href="${url('/css/media-ie.css')}" media="screen" rel="stylesheet" type="text/css" />
+      
+      
+      ${select('*[local-name()!="title"]')}
+    </head>
+  </py:match>
+
+  <py:match path="body" once="true">
+    <body py:attrs="select('@*')">
+      <div id="wrap">
+        <div id="header">
+          <a href="${url('/')}"><h1>BugBox</h1></a>
+        </div>
+        
+        <div id="content">
+          <div py:if="browser == 'msie'" class="top left corner" />
+          <div py:if="browser == 'msie'" class="top right corner" />
+          
+          ${select('*|text()')}
+          <div class="clear" />
+        </div>
+        <div id="footer">BugBox Beta
+          <div py:if="browser == 'msie'" class="bottom left corner" />
+          <div py:if="browser == 'msie'" class="bottom right corner" />
+        </div>
+      </div>
+    </body>
+  </py:match>
+  
+</html>

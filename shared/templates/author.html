@@ -1,0 +1,22 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:o="http://bugbox.localhost/">
+  <xi:include href="layout.html" />
+  <head>
+    <title><o:author-name /></title>
+  </head>
+  <body>
+    
+    <o:author-title />
+    
+    <o:list py:with="tickets=author.tickets.values()" class="one left gutter" title="Tickets" >
+      <o:ticket-list />
+    </o:list>
+    
+    <o:list py:with="commits=author.commits[0:10]" class="two left" title="Commits" >
+      <o:commit-list />
+    </o:list>
+    
+  </body> 
+</html>

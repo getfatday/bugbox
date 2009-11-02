@@ -1,0 +1,23 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:o="http://bugbox.localhost/">
+  <xi:include href="layout.html" />
+  <head>
+    <title>${ticket.system.name} ${ticket.number}</title>
+  </head>
+  <body>
+    <o:ticket-title />
+    
+    <o:list py:with="labels=ticket.labels.values()" class="two left gutter" title="Labels" >
+      <o:label-list />
+    </o:list>
+    
+ <!--
+    <o:list py:with="authors=ticket.authors.values()" class="one left" title="Authors" >
+       <o:author-list />
+     </o:list>-->
+ 
+
+  </body>
+</html>

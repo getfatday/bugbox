@@ -1,0 +1,377 @@
+<?python
+  
+  from time import strftime
+  import textwrap
+  
+  def truncate(content, length=30, elipsis="..."):
+    if len(content) > length:
+      return " ".join(content[0:length].split(" ")[0:-1]) + elipsis
+    return content
+    
+  def wrap(content, length=30, elipsis="..."):
+    data = ""
+    
+    while content:
+      if len(content) > length:
+        a = content[:length].rfind(" ")
+        b = content[length:].find(" ")
+        
+        if a == -1 or b == -1 or a + b > length:
+          data += "%s%s " % (content[:length - len(elipsis)], elipsis)
+          content = content[length - len(elipsis):]
+        else:
+          data += content[:length - a]
+          content = content[length - a:]
+      else:
+        data += content
+        content = None
+          
+    return data?>
+  
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://genshi.edgewall.org/" 
+      xmlns:o="http://bugbox.localhost/" py:strip="">
+
+  <py:match path="o:list">
+    <div class="list" py:attrs="select('@*')" >
+      <div class="list-title" >
+        <div py:if="browser == 'msie'" class="top left corner" />
+        <div py:if="browser == 'msie'" class="top right corner" />
+        <a href="#${select('@title')}" name="${select('@title')}">${select('@title')}</a>
+      </div>
+      
+      <div class="list-content">
+        ${select('*[local-name()!="h1"]|text()')}
+      </div>
+    </div>
+  </py:match>
+  
+  <py:match path="o:ticket-list">
+    <ul py:if="tickets">
+      <li py:for="ticket in reversed(tickets)">
+        <div class="ticket left gutter" />
+        <div class="left">
+          <h2><a href="${url('/tickets/%s/%s' % (ticket.system.id, ticket.number))}">${ticket.number}</a></h2>
+          <a href="${url('/tickets/%s' % ticket.system.id)}">${ticket.system.name}</a>
+          
+        </div>
+        <div class="right">${sorted(ticket.labels.values(), key=lambda x : x.head.author.date)[0].head.author.age}</div>
+        <div class="clear" />
+      </li>
+    </ul>
+  </py:match>
+  
+  <py:match path="o:system-list">
+    <ul py:if="systems">
+      <li py:for="system in reversed(systems)">
+        <div class="system left gutter" />
+        <div class="left">
+          <h2><a href="${url('/tickets/%s' % system.id)}">${system.name}</a></h2>
+          <a href="${system.url}">${system.url}</a>
+        </div>
+        <div class="clear" />
+      </li>
+    </ul>
+  </py:match>
+  
+  <py:match path="o:author-name">
+    <py:choose>
+      <py:when test="author.name">${author.name}</py:when>
+      <py:otherwise test="">${author.email}</py:otherwise>
+    </py:choose>
+  </py:match>
+
+  <py:match path="o:author-title">
+    <div class="title">
+      <div class="title-img">
+        <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=75' % author.digest}" />
+      </div>
+      <py:choose>
+        <py:when test="author.name">
+        <div class="title-txt">
+          <h1>${author.name}</h1>
+          <span class="title-caption">
+            <a href="mailto:${author.email}">${author.email}</a>
+          </span>
+        </div>
+        </py:when>
+        <py:otherwise test="">
+          <div class="title-txt">
+            <h1>${author.email}</h1>
+          </div>
+        </py:otherwise>
+      </py:choose>
+      <div class="clear" />
+    </div>
+  </py:match>
+  
+  <py:match path="o:commit-title">
+    <div class="title">
+      <div class="title-img commit"/>
+      <div class="title-txt">
+        <h1>${truncate(commit.subject, length=40)}</h1>
+        <span py:if="commit.author" class="title-caption">
+          Authored ${commit.author.age} by 
+          <py:choose>
+            <py:when test="commit.author.user">
+              <a href="${url('/authors/%s' % commit.author.user.id)}">
+                <py:choose>
+                  <py:when test="commit.author.name">${commit.author.name}</py:when>
+                  <py:otherwise>${commit.author.email}</py:otherwise>
+                </py:choose>
+              </a>
+            </py:when>
+            <py:when test="commit.author.name">${commit.author.name}</py:when>
+            <py:otherwise />
+          </py:choose>
+        </span>
+      </div>
+      <div class="clear" />
+    </div>
+  </py:match>
+  
+  <py:match path="o:system-title">
+    <div class="title">
+      <div class="title-img system" />
+        <div class="title-txt">
+          <h1>${system.name}</h1>
+          <span class="title-caption">
+            <a href="${system.url}">${system.url}</a>
+          </span>
+        </div>
+      <div class="clear" />
+    </div>
+  </py:match>
+
+  <py:match path="o:ticket-title">
+    <div class="title">
+      <div class="title-img ticket" />
+        <div class="title-txt">
+          <h1>${ticket.number}</h1>
+          <span class="title-caption">
+            <a href="${url('/tickets/%s' % ticket.system.id)}">${ticket.system.name}</a>
+          </span>
+        </div>
+      <div class="clear" />
+    </div>
+  </py:match>
+
+  <py:match path="o:label-title">
+    <div class="title">
+      <div class="title-img label" />
+        <div class="title-txt">
+          <h1>"${label.name}" Label</h1>
+          <span class="title-caption">
+            <a href="${url('/tickets/%s' % label.ticket.system.id)}">${label.ticket.system.name}</a> / 
+            <a href="${url('/tickets/%s/%s' % (label.ticket.system.id, label.ticket.number))}">${label.ticket.number}</a>
+          </span>
+        </div>
+      <div class="clear" />
+    </div>
+  </py:match>
+
+  <py:match path="o:author-list-item">
+    <div class="author list">
+      <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=32' % author.digest}" />
+      <a href="${url('/authors/%s' % author.id)}">
+        <py:choose>
+          <py:when test="author.name">${author.name}</py:when>
+          <py:otherwise test="">${author.email}</py:otherwise>
+        </py:choose>
+      </a>
+    </div>
+  </py:match>
+
+  <py:match path="o:author-list">
+    <ul py:if="authors">
+      <li py:for="author in reversed(authors)">
+        <div class="left gutter">
+          <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=32' % author.digest}" />
+        </div>
+        <div class="left">
+          <h2>
+            <a href="${url('/authors/%s' % author.id)}">
+              <py:choose>
+                <py:when test="author.name">${author.name}</py:when>
+                <py:otherwise test="">${author.email}</py:otherwise>
+              </py:choose>
+            </a>
+          </h2>
+          <a href="mailto:${author.email}">${author.email}</a>
+        </div>
+        <div class="clear" />
+      </li>
+    </ul>
+  </py:match>
+
+  <py:match path="o:label-default">
+    <div>
+      <h3>
+        <py:choose>
+          <py:when test="labels.has_key(None)">History</py:when>
+          <py:otherwise test="">History for "${labels.values()[0].name}"</py:otherwise>
+        </py:choose>
+      </h3>
+    </div>
+  </py:match>
+  
+  <py:match path="o:label-list">
+    <ul py:if="labels">
+      <li py:for="label in reversed(labels)">
+        <div class="label left gutter" />
+        <div class="left">
+          <h2><a href="${url('/tickets/%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name))}">${label.name}</a></h2>
+          <a href="${url('/tickets/%s' % label.ticket.system.id)}">${label.ticket.system.name}</a> / 
+          <a href="${url('/tickets/%s/%s' % (label.ticket.system.id, label.ticket.number))}">${label.ticket.number}</a>
+        </div>
+        <div class="right">${label.head.committer.age}</div>
+        <div class="clear" />
+      </li>
+    </ul>
+  </py:match>
+  
+  <py:match path="o:commit-instructions">
+    <dl>
+      <dt>Adding this BugBox repository</dt>
+      <dd><pre>git remote add bugbox ${select('@url')}</pre></dd>
+      <dt>Applying this ${select('@type')}</dt>
+      <dd>
+        <pre>git pull bugbox ${select('@ref')}</pre>
+      </dd>
+      <dt>Pushing changes to this ${select('@type')}</dt>
+      <dd>
+        <pre>git push bugbox ${select('@ref')}</pre>
+      </dd>
+    </dl>
+  </py:match>
+  
+  <py:match path="o:commit-list">
+    <ul py:if="commits">
+      <!--<li py:for="commit in sorted(commits, key=lambda x : x.date, reverse=True)">-->
+      <li py:for="commit in commits">
+        <div class="left gutter">
+          <img py:if="commit.author and commit.author.user" src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=48' % commit.author.user.digest}" />
+        </div>
+        <div class="left">
+          <h2><a href="${url('/commits/%s' % commit.id)}">${truncate(commit.subject)}</a></h2>
+          
+          <py:choose>
+            <py:when test="commit.author and commit.author.user">
+              <a href="${url('/authors/%s' % commit.author.user.id)}">
+                <py:choose>
+                  <py:when test="commit.author.user.name">${commit.author.user.name}</py:when>
+                  <py:otherwise test="">${commit.author.email}</py:otherwise>
+                </py:choose>
+              </a>
+            </py:when>
+            <py:otherwise >
+              <py:if test="commit.author and commit.author.name">${commit.author.name}</py:if>
+            </py:otherwise>
+          </py:choose>
+          
+        </div>
+        <div py:if="commit.committer" class="right">${commit.committer.age}</div>
+        <div class="clear" />
+      </li>
+    </ul>
+  </py:match>
+
+  <py:match path="o:commit-message">
+    <dl>
+    <dd title="${commit.subject}">${commit.subject}</dd>
+    <dd py:if="commit.body">${commit.body}</dd>
+    </dl>
+  </py:match>
+  
+  <py:match path="o:commit-details">
+    <dl>
+      <dt>Hash</dt>
+      <dd><a href="${url('/commits/%s' % commit.id)}">${commit.id}</a></dd>
+      <py:choose>
+        <py:when test="commit.author and commit.committer and commit.author.email == commit.committer.email">
+          <dt>Authored and Committed by</dt>
+          <dd>
+            <div class="left gutter">
+              <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=32' % commit.author.digest}" />
+            </div>
+            <div class="left">
+              <h3>
+                <a href="${url('/authors/%s' % commit.author.email)}">
+                  <py:choose>
+                    <py:when test="commit.author.name">${commit.author.name}</py:when>
+                    <py:otherwise test="">${commit.author.email}</py:otherwise>
+                  </py:choose>
+                </a>
+              </h3>  
+              <span>${commit.author.age}</span>
+            </div>
+            <div class="clear" />
+          </dd>
+        </py:when>
+        <py:when test="commit.author or commit.committer">
+          <py:if test="commit.author">
+            <dt>Authored by</dt>
+            <dd>
+              <div class="left gutter">
+                <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=32' % commit.author.digest}" />
+              </div>
+              <div class="left">
+                <h3>
+                  <a href="${url('/authors/%s' % commit.author.email)}">
+                    <py:choose>
+                      <py:when test="commit.author.name">${commit.author.name}</py:when>
+                      <py:otherwise test="">${commit.author.email}</py:otherwise>
+                    </py:choose>
+                  </a>
+                </h3>  
+                <span>${commit.author.age}</span>
+              </div>
+              <div class="clear" />
+            </dd>
+          </py:if>
+          <py:if test="commit.committer">
+            <dt>Committed by</dt>
+            <dd>
+              <div class="left gutter">
+                <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=32' % commit.committer.digest}" />
+              </div>  
+              <div class="left">
+                 <h3>
+                   <a href="${url('/authors/%s' % commit.committer.email)}">
+                     <py:choose>
+                       <py:when test="commit.committer.name">${commit.committer.name}</py:when>
+                       <py:otherwise test="">${commit.committer.email}</py:otherwise>
+                     </py:choose>
+                   </a>
+                 </h3>  
+                 <span>${commit.committer.age}</span>
+               </div>
+              <div class="clear" />
+            </dd>
+          </py:if>
+        </py:when>
+      </py:choose>
+      <dt>Date</dt>
+      <dd>${commit.committer.date.strftime("%a, %d %b %Y %H:%M:%S %Z")}</dd>
+      <py:if test="commit.parents">
+        <py:choose>
+          <py:when test="len(commit.parents) > 1">
+            <dt>Parents</dt>
+            <dd>
+              <ul>
+                <li py:for="parent in commit.parents"><a href="${url('/commits/%s' % parent.id)}">${parent.id}</a></li>
+              </ul>
+            </dd>
+          </py:when>
+          <py:otherwise>
+            <dt>Parent</dt>
+            <dd>
+              <a href="${url('/commits/%s' % commit.parents[0].id)}">${commit.parents[0].id}</a>
+            </dd>
+          </py:otherwise>
+        </py:choose>
+      </py:if>
+    </dl>
+  </py:match>
+
+</html>

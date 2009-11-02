@@ -1,0 +1,31 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:o="http://bugbox.localhost/">
+  <xi:include href="layout.html" />
+  <head>
+    <title>Tickets</title>
+  </head>
+  <body>
+    
+    <py:choose>
+      <py:when test="system and tickets">
+        <o:system-title />
+        <o:list title="Instructions" class="two left gutter" py:with="head=tickets[0].labels.values()[0].head">
+          <o:commit-instructions type="bug system" url="${head.remote_url}" ref="${system.id}/ticket-number[/label]" />
+        </o:list>
+        <o:list class="one right" title="Tickets" >
+          <o:ticket-list />
+        </o:list>
+      </py:when>
+      <py:otherwise>
+        <o:list class="three" title="Tickets" >
+          <o:ticket-list />
+        </o:list>
+      </py:otherwise>
+    </py:choose>
+    
+    
+
+  </body> 
+</html>

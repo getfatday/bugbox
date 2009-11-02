@@ -1,0 +1,29 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:o="http://bugbox.localhost/">
+  <xi:include href="layout.html" />
+  <head>
+    <title>Welcome</title>
+    <link rel="alternate" type="application/atom+xml" title="BugBox" href="rss/" />
+  </head>
+  <body class="index">
+    <div class="title">
+      <div class="title-img ticket" />
+      <div class="title-txt">
+        <h1>Welcome to BugBox!</h1>
+        <span class="title-caption">
+          BugBox is a application used to post integration requests associated with external bug systems.
+        </span>
+      </div>
+      <div class="clear" />
+    </div>
+    
+    <o:list title="Tickets" class="two left gutter" >
+      <o:ticket-list />
+    </o:list>
+    <o:list title="Bug Systems" class="one right" >
+      <o:system-list />
+    </o:list>
+  </body> 
+</html>

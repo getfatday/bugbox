@@ -1,0 +1,24 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:o="http://bugbox.localhost/">
+  <xi:include href="layout.html" />
+  <head>
+    <title>${commit.id}</title>
+  </head>
+  <body>
+    <o:commit-title />
+    
+    <o:list title="Instructions" class="two left">
+      <o:commit-instructions type="commit" url="${commit.remote_url}" ref="${commit.id}" />
+    </o:list>
+
+    <o:list title="Details" class="one right">
+      <o:commit-details />
+    </o:list>
+    
+    <o:list title="Comment" class="two left gutter">
+      <o:commit-message />
+    </o:list>
+  </body> 
+</html>

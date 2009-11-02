@@ -1,0 +1,184 @@
+
+html, body {
+    background: #86C9EF;
+}
+
+#wrap {
+    margin-left: auto;
+    margin-right: auto;
+    width: 980px;
+}
+
+#header {
+    padding-top: 10px;
+    padding-left: 10px;
+    height: 85px;
+}
+
+#header > a {
+    position: absolute;
+    width: 275px; height:105px;
+    background: url("../img/logo.gif") top left no-repeat;
+    text-indent: -9999px;
+}
+
+#content {
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    -webkit-border-top-left-radius: 20px;
+    -webkit-border-top-right-radius: 20px;
+    -moz-border-radius-topleft: 20px;
+    -moz-border-radius-topright: 20px;
+    background: white;
+    padding: 40px;
+    min-height: 600px;
+}
+
+#content h1 {
+    font-size: 32px;
+}
+
+#footer {
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    -webkit-border-bottom-left-radius: 20px;
+    -webkit-border-bottom-right-radius: 20px;
+    -moz-border-radius-bottomleft: 20px;
+    -moz-border-radius-bottomright: 20px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    background: white;
+    color: #999;
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.ticket {
+    width: 48px; height: 48px;
+    background: url("../img/ticket.gif") top left no-repeat;
+}
+
+.title-img.ticket {
+    width: 75px; height: 75px;
+    background: url("../img/ticket-title.gif") top left no-repeat;
+}
+
+.system {
+    width: 48px; height: 48px;
+    background: url("../img/system.gif") top left no-repeat;
+}
+
+.title-img.system {
+    width: 75px; height: 75px;
+    background: url("../img/system-title.gif") top left no-repeat;
+}
+
+.label {
+    width: 48px; height: 48px;
+    background: url("../img/label.gif") top left no-repeat;
+}
+
+.title-img.label {
+    width: 75px; height: 75px;
+    background: url("../img/label-title.gif") top left no-repeat;
+}
+
+.commit {
+    width: 48px; height: 48px;
+    background: url("../img/commit.gif") top left no-repeat;
+}
+
+.title-img.commit {
+    width: 75px; height: 75px;
+    background: url("../img/commit-title.gif") top left no-repeat;
+}
+
+
+.one { width: 288px; }
+.two { width: 594px; }
+.three { width: 900px;}
+
+.left { float: left; }
+.right { float: right; }
+
+.gutter.right { margin-left: 18px; }
+.gutter.left { margin-right: 18px; }
+
+.one .gutter.right,
+.two .gutter.right,
+.three .gutter.right { margin-left: 9px; }
+
+.one .gutter.left,
+.two .gutter.left,
+.three .gutter.left { margin-right: 9px; }
+
+.top { top: 0; }
+.left { left: 0; }
+.right { right: 0; }
+.bottom { bottom: 0; }
+
+.list-title {
+    background: #f96;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    -webkit-border-top-left-radius: 10px;
+    -webkit-border-top-right-radius: 10px;
+    -moz-border-radius-topleft: 10px;
+    -moz-border-radius-topright: 10px;
+    color: white;
+    padding: 5px;
+    padding-left: 10px;
+}
+
+.list-title a {
+    color: white;
+    text-decoartion: none;
+}
+
+.list-title a:hover:after {
+    content: " \A7";
+}
+
+.list-content {
+    padding-top: 0px;
+    padding: 10px;
+    padding-bottom: 40px;
+    text-overflow: ellipsis;
+    -moz-text-overflow: ellipsis;
+    -webkit-text-overflow: ellipsis;
+}
+
+.list-content li {
+    border-top: 1px dotted #ccc;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.list-content li:first-child {
+    border: none;
+}
+
+.list-content dt {
+    margin-bottom: 5px;
+}
+
+.list-content dd {
+    margin-bottom: 15px;
+}
+
+.title {
+    margin-bottom: 20px;
+}
+
+.title-img, .title-txt {
+    margin-right: 20px;
+    float: left;
+}
+
+.title-caption {
+    font-size: 14px;
+}
+
+.clear {
+    clear: both;
+}

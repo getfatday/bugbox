@@ -1,0 +1,99 @@
+* BugBox
+
+Bug integration system based on GIT.
+
+Allow an alternative to the GIT patch submission process, that isn't as heavy handed as Gerrit.
+
+** Goals
+
+BugBox should be:
+
+*** Dead simple to setup
+*** Store all critical data in a GIT repo. 
+*** Provide an easy interface for patch submission and retrieval
+
+
+** Core
+
+*** TODO [#B] Support for GIT tree and blob objects.
+
+Create classes to support tree and blob objects. This will allow the web interface to show
+the file tree for a given commit
+
+*** TODO [#C] Support for GIT annotation objects. 
+
+Create classed to support GIT annotations. The web interface doesn't support annotations, better
+off using GIT's internal annotation system and rendering it in the web interface
+
+
+** Distribution
+
+*** DONE [#A] Add dependencies to setup.py
+    CLOSED: [2009-11-02 Mon 15:36]
+
+Need to supply egg dependencies for Genshi and CherryPy
+
+*** TODO [#B] Add global cfg to install
+
+Global configuration should be installed with egg. To /etc if the install is system wide, or ~/.bugboxconfig
+if the install is at the user level
+
+*** TODO [#C] Add bugboxd script for web daemon
+
+
+** Git Hook
+
+*** TODO [#C] Add plugin architecture to BugBox system hooks
+
+Bug System hooks should be external to BugBox's core code. Provide some easy install
+entry points for Byg System Hooks
+
+*** TODO [#C] Create jira hook
+*** TODO [#C] Create bugzilla hook
+
+
+** Web Site
+
+*** TODO [#B] Home page needs a help section
+
+*** TODO [#A] Reference should be updated to require a label
+
+BugBox was initially designed to not require a label when pushing a commit. The problem
+is that GIT stores references to a file, making it difficult to add addition labels in the
+future.
+
+For example:
+
+Pushing to jira/ABC-123 would result in the GIT file reference refs/heads/jira/ABC-123
+
+If the user then pushes to jira/ABC-123/graphics GIT will return an error, since it
+assumes, given the path refs/heads/jira/ABC-123, that ABC-123 is a directory and not
+a file.
+
+*** TODO [#A] Support notion of TAIL in web interface.
+
+If the a Ticket label has a TAIL, show the commit history, otherwise just show the latest commit
+
+*** TODO [#B] Add commit diff output
+
+Show the diff for a given commit
+
+*** TODO [#B] Add download patch
+
+Allow the user to download the patch for a Ticket label. If the label has a TAIL, then allow the option
+of downloading a zipped series of patches.
+
+*** TODO [#B] Add file Tree Output
+
+Show tree and files for a given commit.
+
+*** TODO [#C] Support for Annotations.
+
+
+** Authentication
+
+Authentication is out of scope. User protocal authentication if necesarry. (HTTP, SSH)
+
+If Authentication is ever supported it should be a plug-in authentication system. If possible
+the authentication requests could be handled by the Bug Systems. Support would have to
+be handled in the GIT and Web interfaces. YUCK!

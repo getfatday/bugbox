@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:py="http://genshi.edgewall.org/">
+
+  <title>BugBox Tickets</title>
+  <id href="/"/>
+  <link rel="alternate" href="/" type="text/html"/>
+  <link rel="self" href="rss/" type="application/atom+xml"/>
+
+  <entry py:for="ticket in reversed(tickets)">
+    <title>${ticket.system.id}/${ticket.number}</title>
+    <link rel="alternate" href="${'/tickets/%s/%s' % (ticket.system.id, ticket.number)}" type="text/html"/>
+    <id>${'/tickets/%s/%s' % (ticket.system.id, ticket.number)}</id>
+    <author>
+      <name>${ticket.id}</name>
+    </author>
+    <summary>comment here</summary>
+  </entry>
+
+</feed>

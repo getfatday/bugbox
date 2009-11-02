@@ -1,0 +1,20 @@
+
+/* TYPOGRAPHY */
+/* ----------------------------------------- */
+
+/* Font Family */
+
+html, body { font-family: 'Trebuchet MS', Helvetica, 'Helvetica Neue', Arial, sans-serif; }
+
+
+/* Headers */
+
+h1, h2, h3, h5, h5, h6 { font-weight:bold; }
+
+h2 { font-size: 24px; }
+
+dd { font-size: 12px; color: #666;}
+
+a { color: #A3683B; text-decoration: none;}
+
+.fixed { font-family: Andale Mono, monospace; }
