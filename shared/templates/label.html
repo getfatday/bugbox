@@ -10,14 +10,7 @@
     <o:label-title />
     
     <o:list title="Instructions" class="two left">
-      <py:choose>
-        <py:when test="label.name != 'default'">
-          <o:commit-instructions type="label" url="${label.head.remote_url}" ref="${'%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name)}" />
-        </py:when>
-        <py:otherwise>
-          <o:commit-instructions type="label" url="${label.head.remote_url}" ref="${'%s/%s' % (label.ticket.system.id, label.ticket.number)}" />
-        </py:otherwise>
-      </py:choose>
+      <o:commit-instructions type="label" url="${label.head.remote_url}" ref="${'%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name)}" />
     </o:list>
     
     <o:list py:with="commit=label.head" title="Details" class="one right">
