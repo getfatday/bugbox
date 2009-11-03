@@ -50,6 +50,7 @@ Creating the "CherryPy":http://www.cherrypy.org/ config:
 cat > /example/path/bugbox.cfg << EOF
 [global]
 bugbox.dir = "/example/path/bugboxd.git"
+tree.bugbox: cherrypy.tree.mount(bugbox.web.root, "/", bugbox.web.root.config)
 EOF
 </pre>
 

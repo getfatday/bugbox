@@ -20,6 +20,9 @@ class Template(object):
     if k == 'dir':
       self.loader = TemplateLoader(v, auto_reload=True)
 
+  def url(self, path=""):
+    return cherrypy.url(path=path, relative='server')
+
   def output(self, filename, method='html', encoding='utf-8', **options):
       """Decorator for exposed methods to specify what template the should use
       for rendering, and which serialization method and options should be
@@ -67,7 +70,7 @@ class Template(object):
       else:
         browser = "unknown"
     
-      ctxt = Context(url=cherrypy.url, request=cherrypy.request, response=cherrypy.response, browser=browser)
+      ctxt = Context(url=self.url, request=cherrypy.request, response=cherrypy.response, browser=browser)
       ctxt.push(kwargs)
       return template.generate(ctxt)
 
@@ -100,6 +103,10 @@ class BugBoxApp(object):
       self._bugbox = BugBox(self._repository)
       
     return self._bugbox
+    
+  @property
+  def base(self):
+    return self._base
   
   @cherrypy.expose
   @template.output('index.html')
@@ -195,8 +202,6 @@ cherrypy.config.update({
   'tools.staticdir.root': rd ,
   'template.dir': os.path.join(rd, 'shared/templates')
 })
-
-cherrypy.tree.mount(root, '/', root.config)
 
 def start(path="/"):
   cherrypy.quickstart(root, path)
