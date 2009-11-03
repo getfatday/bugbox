@@ -33,7 +33,10 @@ off using GIT's internal annotation system and rendering it in the web interface
 
 Need to supply egg dependencies for Genshi and CherryPy
 
-*** TODO [#B] Add global cfg to install
+*** DONE [#B] Add global cfg to install
+    CLOSED: [2009-11-03 Tue 12:41]
+
+Descoped. Configuration is supplied with `cherryd'
 
 Global configuration should be installed with egg. To /etc if the install is system wide, or ~/.bugboxconfig
 if the install is at the user level
@@ -43,7 +46,7 @@ if the install is at the user level
 
 ** Git Hook
 
-*** TODO [#C] Add plugin architecture to BugBox system hooks
+*** TODO [#A] Add plugin architecture to BugBox system hooks
 
 Bug System hooks should be external to BugBox's core code. Provide some easy install
 entry points for Byg System Hooks
