@@ -669,6 +669,7 @@ class BugBox(Provider):
   REFERENCE_CACHE = "reference"
   TAG_REFERENCE_CACHE = "tag_reference"
   TAG_CACHE = "tags"
+  HAS_REFERENCE_CACHE = "has_reference"
   
   def __init__(self, path):
     
@@ -707,7 +708,8 @@ class BugBox(Provider):
                self.TICKET_CACHE,
                self.REFERENCE_CACHE,
                self.TAG_REFERENCE_CACHE,
-               self.TAG_CACHE)
+               self.TAG_CACHE,
+               self.HAS_REFERENCE_CACHE)
     
   def call(self, *args, **kwargs):
     p = subprocess.Popen(args, cwd=kwargs.get("cwd", os.getcwd()), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -718,7 +720,7 @@ class BugBox(Provider):
 
     return (o, e, p.returncode)
 
-  @profile
+  #@profile
   def git(self, global_args=None, *args):
 
     cmd = ["git",]
@@ -993,6 +995,36 @@ class BugBox(Provider):
     
     return self.cache(cache)
     
+  def set_tail(self, reference, revision):
+    
+    system, ticket, label = self.splitref(reference)
+    
+    if not system:
+      raise AttributeError("Bad reference '%s'" % reference)
+      return
+      
+    o, e, v = self.git("tag", "-f", "-a", "-m", "''", "%s/%s/%s" % (system, ticket, label), revision)
+    
+    if v != 0:
+      raise IOError(e)
+    
+  def has_ref(self, reference):
+    
+    cache = self.HAS_REFERENCE_CACHE
+    
+    if not self.synced:
+      self.sync()
+    
+    if not self.iscached(cache):
+      self.cache(cache, {})
+
+    if not self.cache(cache).has_key(reference):
+
+      o, e, v = self.git("show-ref", "--verify", "--quiet", reference)
+      self.cache(cache)[reference] = v == 0
+      
+    return self.cache(cache)[reference]
+      
   def parse_tag(self, reference):
     
     cache = self.TAG_CACHE
@@ -1018,6 +1050,22 @@ class BugBox(Provider):
       }
 
     return self.cache(cache)[reference]
+    
+  def splitref(self, reference, mapped=False):
+    m = REF_PATTERN.match(reference)
+    
+    if m:
+      if mapped:
+        return m.groupdict()
+      else:
+        group = m.groupdict()
+        return (group['system'], group['number'], group['label'])
+    else:
+      if mapped:
+        return None
+      else:
+        return (None, None, None)
+      
     
   def parse_ref(self, reference, tag=False):
 

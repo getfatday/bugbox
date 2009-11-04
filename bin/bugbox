@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+import sys
+
+if __name__ == '__main__':
+  
+  def main(*argv):
+    from bugbox.shell import BugBox
+    argv = list(argv)
+    bugbox = BugBox()
+    opt, args = bugbox.parse(*argv)
+    bugbox.execute(opt, args)
+  
+  sys.exit(main(*sys.argv[1:]))
