@@ -960,7 +960,7 @@ class BugBox(Provider):
       o, e, v = self.git("for-each-ref", '--format=%(refname) %(objecttype) %(objectname)')
 
       if v != 0:
-        raise IOError(e)
+        raise IOError(o)
 
       refs = [l.strip().split(" ") for l in o.splitlines()]
 

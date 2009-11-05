@@ -46,7 +46,8 @@ if the install is at the user level
 
 ** Git Hook
 
-*** TODO [#A] Add plugin architecture to BugBox system hooks
+*** DONE [#A] Add plugin architecture to BugBox system hooks
+    CLOSED: [2009-11-04 Wed 18:08]
 
 Bug System hooks should be external to BugBox's core code. Provide some easy install
 entry points for Byg System Hooks
