@@ -80,7 +80,8 @@ a file.
 
 If the a Ticket label has a TAIL, show the commit history, otherwise just show the latest commit
 
-*** TODO [#B] Add commit diff output
+*** DONE [#B] Add commit diff output
+    CLOSED: [2009-11-05 Thu 13:43]
 
 Show the diff for a given commit
 

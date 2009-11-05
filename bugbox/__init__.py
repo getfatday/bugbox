@@ -322,6 +322,219 @@ class UserStamp(object):
       self._date = datetime.fromtimestamp(self._epoch, TZ(self._tz))
     return self._date
       
+class DiffLine(object):
+  
+  def __init__(self, data, left=None, right=None):
+    self.left = left
+    self.right = right
+    self.data = data
+    
+  def is_left(self):
+    return self.left != None
+    
+  def is_right(self):
+    return self.right != None
+    
+  def is_both(self):
+    return self.is_left() and self.is_right()
+      
+class DiffChunk(object):
+  
+  def __init__(self, left_start, left_len, right_start, right_len, **kwargs):
+    self.left_start = left_start
+    self.left_len = left_len
+    self.right_start = right_start
+    self.right_len = right_len
+    self.left_offset = 0
+    self.right_offset = 0
+    self.lines = []
+    
+  def append(self, event, data):
+        
+    pos_l = None
+    pos_r = None
+    
+    if event in "- ":
+      pos_l = self.left_start + self.left_offset
+      self.left_offset += 1
+    
+    if event in "+ ":
+      pos_r = self.right_start + self.right_offset
+      self.right_offset += 1
+    
+    self.lines.append(DiffLine(data, pos_l, pos_r))
+      
+class FileDiff(object):
+  
+  def __init__(self, mode, action="U", format="ascii", tail=None, head=None, left=None, right=None, **kwargs):
+
+    self.action = action
+    self.format = format
+    self.tail = tail
+    self.head = head
+    self.left = left
+    self.right = right
+    self.chunks = []
+    
+  @property
+  def path(self):
+    
+    if self.right:
+      return self.right
+    else:
+      return self.left
+      
+  def is_ascii(self):
+    return self.format == "ascii"
+    
+  def is_binary(self):
+    return self.format == "binary"
+      
+class UnifiedDiff(object):
+  
+  DIFF = re.compile(r"^diff --git (?P<left>.*) (?P<right>.*)$")
+  INDEX = re.compile(r"^index (?P<tail>[^\.].*)\.\.(?P<head>[^ ]+)( (?P<mode>.*))?$")
+  ACTION = re.compile(r"^(?P<action>deleted|new) file mode (?P<mode>.*)$")
+  BINARY = re.compile(r"^(?P<format>Binary) files .*$")
+  COMMIT = re.compile(r"^(?P<commit>[a-z0-9]{40})$")
+  CHUNK = re.compile(r"^@@ -(?P<left_start>[0-9]+),(?P<left_len>[0-9]+) \+(?P<right_start>[0-9]+),(?P<right_len>[0-9]+) @@$")
+  LINE = re.compile(r"^(?P<event>\+|-| |@@ .* @@)(?P<data>.*$|$)")
+  FILE = re.compile(r"^(\+\+\+|---) .*$")
+  
+  def __init__(self, data):
+    self._data = data
+    self._parsed_data = []
+    self._commit_index = []
+    self.files = []
+    
+    self._preparse()
+    self._parse()
+    
+  def _parse(self):
+    
+    for f_data in self._parsed_data:
+      
+      f = FileDiff(**f_data)
+      
+      for c_data in f_data["chunks"]:
+        c = DiffChunk(**c_data)
+        
+        for l_data in c_data["lines"]:
+          c.append(**l_data)
+                
+        f.chunks.append(c)
+      
+      self.files.append(f)
+  
+  def _event(self, event, pattern, data):
+    m = pattern.match(data)
+    
+    if not m:
+      return False
+      
+    values = m.groupdict()
+      
+    if event == "commit":
+      self._commit_index = values["commit"]
+      
+    if event == "diff":
+      values["chunks"] = []
+      
+      for k in ("left", "right"):
+        if values[k] == "/dev/null":
+          del values[k]
+        elif values[k][0] in "ab":
+          values[k] = values[k][1:]
+      
+      self._parsed_data.append(values)
+      
+    if event == "action":
+      
+      if values["action"] == "deleted":
+        values["action"] = "D"
+      else:
+        values["action"] = "A"
+        
+      self._parsed_data[-1].update(values)
+      
+    if event == "index":
+      
+      for k in ("tail", "head"):
+        if values[k] == "0" * 40:
+          del values[k]
+      
+      if self._parsed_data[-1].has_key("mode"):
+        del values["mode"]
+        
+      self._parsed_data[-1].update(values)
+    
+    if event == "binary":
+      self._parsed_data[-1]["format"] = values["format"].lower()
+      
+    if event == "chunk":
+      
+      for k in values.keys():
+        values[k] = int(values[k])
+      
+      values["lines"] = []
+      self._parsed_data[-1]["chunks"].append(values)
+      
+    if event == "line":
+      # Check if new range has been specified
+      if values["event"] not in "+- ":
+        if self._event("chunk", self.CHUNK, values["event"]):
+          if len(values["data"]) > 0:
+            return self._event("line", self.LINE, values["data"])
+        else:
+          return False
+          
+      else: 
+        self._parsed_data[-1]["chunks"][-1]["lines"].append(values)
+        
+    
+    return True
+    
+  def __str__(self):
+    
+    return os.linesep.join(self._data)
+    
+  def _preparse(self):
+    
+    patterns = [
+      ("commit", self.COMMIT),
+      ("diff", self.DIFF),
+      ("action", self.ACTION),
+      ("index", self.INDEX),
+      ("binary", self.BINARY),
+      ("file", self.FILE),
+      ("line", self.LINE),
+    ]
+    
+    stack = list(patterns)
+    event, pattern = stack[0]
+    data = list(self._data)
+    
+    while data:
+      
+      first_event = event
+      reset = False
+      
+      while stack and not self._event(event, pattern, data[0]):
+        stack = stack[1:]
+        
+        if len(stack) == 0:
+          reset = True
+          stack = list(patterns)
+        
+        event, pattern = stack[0]
+        
+        if reset and first_event == event:
+          print >> sys.stderr,  "error: Failed to parse line %s" % data[0]
+          break
+        
+      data = data[1:]
+  
+      
 class Commit(Record):
   
   TREE = re.compile(r"^tree (?P<index>[0-9a-fA-F]{40})$")
@@ -351,7 +564,16 @@ class Commit(Record):
     self._keys_by_date = None
     self._keys_by_author = None
     self._keys_by_committer = None
+    self._diff = None
 
+  @property
+  def diff(self):
+    
+    if self._diff == None:
+      self._diff = UnifiedDiff(self.provider.commit_diff(self.id))
+      
+    return self._diff
+    
   def has_key(self, key):
 
     return Record.has_key(self, key) or \
@@ -677,6 +899,7 @@ class BugBox(Provider):
   TAG_CACHE = "tags"
   HAS_REFERENCE_CACHE = "has_reference"
   HISTORY_CACHE = "history"
+  COMMIT_DIFF_CACHE = "commit_diff"
   
   def __init__(self, path):
     
@@ -717,7 +940,8 @@ class BugBox(Provider):
                self.TAG_REFERENCE_CACHE,
                self.TAG_CACHE,
                self.HAS_REFERENCE_CACHE,
-               self.HISTORY_CACHE)
+               self.HISTORY_CACHE,
+               self.COMMIT_DIFF_CACHE)
     
   def call(self, *args, **kwargs):
     p = subprocess.Popen(args, cwd=kwargs.get("cwd", os.getcwd()), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -1074,6 +1298,26 @@ class BugBox(Provider):
       else:
         return (None, None, None)
       
+  def commit_diff(self, revision):
+    
+    cache = self.COMMIT_DIFF_CACHE
+    
+    if not self.synced:
+      self.sync()
+      
+    if not self.iscached(cache):
+      self.cache(cache, {})
+      
+    if not self.cache(cache).has_key(revision):
+      
+      o, e, v = self.git("diff-tree", "-r", "-p", "--full-index", revision)
+      
+      if v != 0:
+        raise IOError(e)
+
+      self.cache(cache)[revision] = o.splitlines()
+      
+    return self.cache(cache)[revision]
     
   def parse_history(self, head, tail):
     

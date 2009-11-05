@@ -20,6 +20,10 @@
     <o:list py:if="len(label.commit_history_keys()) > 1" py:with="commits=label.commit_history_values()" title="History" class="two left">
       <o:commit-list />
     </o:list>
+    
+    <o:list title="Diff" class="three left" py:if="len(label.head.diff.files) > 0" py:with="diff=label.head.diff">
+      <o:unified-diff  />
+    </o:list>
 
   </body>
 </html>

@@ -230,6 +230,41 @@
     </ul>
   </py:match>
   
+  
+  <py:match path="o:unified-diff">
+    <dl class="diff">
+      <py:for each="file in diff.files">
+        <dt class="${'action_%s' % file.action.lower()}" title="${file.path}">${file.path}</dt>
+        <py:choose>
+          <py:when test="file.is_ascii() and len(file.chunks) != 0">
+            <dd>
+              <table>
+                <py:for each="chunk in file.chunks">
+                  <tr>
+                    <td class="count"><pre>...</pre></td>
+                    <td class="count"><pre>...</pre></td>
+                    <td class="line chunk">
+                      <pre>${"@@ -%d,%d +%d,%d @@" % (chunk.left_start, chunk.left_len, chunk.right_start, chunk.right_len)}</pre>
+                    </td>
+                  </tr>
+                  <tr class="${' '.join(['diff_%s' % k for k in ('left', 'right') if getattr(line, k) != None])}" py:for="line in chunk.lines">
+                    <td class="count"><pre><py:if test="line.is_left()">${line.left}</py:if></pre></td>
+                    <td class="count"><pre><py:if test="line.is_right()">${line.right}</py:if></pre></td>
+                    <td class="line">
+                      <pre>${line.data}</pre>
+                    </td>
+                  </tr>
+                </py:for>
+              </table>
+            </dd>
+          </py:when>
+          <py:otherwise>
+          </py:otherwise>
+        </py:choose>
+      </py:for>
+    </dl>
+  </py:match>
+    
   <py:match path="o:commit-instructions">
     <dl>
       <dt>Adding this BugBox repository</dt>
@@ -281,7 +316,7 @@
     <dd title="${commit.subject}">${commit.subject}</dd>
     <dd py:if="commit.body">${commit.body}</dd>
     </dl>
-  </py:match>
+  </py:match>  
   
   <py:match path="o:commit-details">
     <dl>

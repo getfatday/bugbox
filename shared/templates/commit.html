@@ -20,5 +20,10 @@
     <o:list title="Comment" class="two left gutter">
       <o:commit-message />
     </o:list>
+    
+    <o:list title="Diff" class="three left" py:if="len(commit.diff.files) > 0" py:with="diff=commit.diff">
+      <o:unified-diff  />
+    </o:list>
+    
   </body> 
 </html>
