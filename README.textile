@@ -36,10 +36,14 @@ git config ticket.bz.name BugZilla
 git config ticket.bz.url http://bugzilla.example.com
 </pre>
 
-Adding GIT hooks:
+Add GIT hooks:
 
 <pre>
-cp /source/bugbox/shared/hooks/* $GIT_DIR/hooks
+cat > $GIT_DIR/hooks/update << EOF
+#! /bin/bash
+
+bugbox hook update $1 $2 $3
+EOF
 </pre>
 
 h2. Running the Web Service
