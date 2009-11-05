@@ -524,13 +524,19 @@ class Label(Record):
       
     return self._ticket
 
+  def commit_history_keys(self):
+    return self.provider.parse_history(self._head_index, self._tail_index)
+
+  def commit_history_values(self):
+    return [Commit(self.provider)[k] for k in self.commit_history_keys()]
+
   @property
   def head(self):
-    return Commit(self._provider)[self._head_index]
+    return Commit(self.provider)[self._head_index]
 
   @property
   def tail(self):
-    return Commit(self._provider)[self._tail_index]
+    return Commit(self.provider)[self._tail_index]
 
   @property
   def name(self):
@@ -670,6 +676,7 @@ class BugBox(Provider):
   TAG_REFERENCE_CACHE = "tag_reference"
   TAG_CACHE = "tags"
   HAS_REFERENCE_CACHE = "has_reference"
+  HISTORY_CACHE = "history"
   
   def __init__(self, path):
     
@@ -709,7 +716,8 @@ class BugBox(Provider):
                self.REFERENCE_CACHE,
                self.TAG_REFERENCE_CACHE,
                self.TAG_CACHE,
-               self.HAS_REFERENCE_CACHE)
+               self.HAS_REFERENCE_CACHE,
+               self.HISTORY_CACHE)
     
   def call(self, *args, **kwargs):
     p = subprocess.Popen(args, cwd=kwargs.get("cwd", os.getcwd()), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -1066,6 +1074,30 @@ class BugBox(Provider):
       else:
         return (None, None, None)
       
+    
+  def parse_history(self, head, tail):
+    
+    cache = self.HISTORY_CACHE
+    
+    if not self.synced:
+      self.sync()
+      
+    if not self.iscached(cache):
+      self.cache(cache, {})
+
+    if head == tail:
+      return [head,]
+
+    if not self.cache(cache).has_key((head, tail)):
+      
+      o, e, v = self.git("rev-list", '%s..%s' % (tail, head))
+
+      if v != 0:
+        raise IOError(e)
+
+      self.cache(cache)[(head, tail)] = [l.strip() for l in o.splitlines()] + [tail,]
+
+    return self.cache(cache)[(head, tail)]
     
   def parse_ref(self, reference, tag=False):
 

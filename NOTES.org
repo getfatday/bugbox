@@ -60,7 +60,8 @@ entry points for Byg System Hooks
 
 *** TODO [#B] Home page needs a help section
 
-*** TODO [#A] Reference should be updated to require a label
+*** DONE [#A] Reference should be updated to require a label
+    CLOSED: [2009-11-04 Wed 23:07]
 
 BugBox was initially designed to not require a label when pushing a commit. The problem
 is that GIT stores references to a file, making it difficult to add addition labels in the
@@ -74,7 +75,8 @@ If the user then pushes to jira/ABC-123/graphics GIT will return an error, since
 assumes, given the path refs/heads/jira/ABC-123, that ABC-123 is a directory and not
 a file.
 
-*** TODO [#A] Support notion of TAIL in web interface.
+*** DONE [#A] Support notion of TAIL in web interface.
+    CLOSED: [2009-11-04 Wed 23:06]
 
 If the a Ticket label has a TAIL, show the commit history, otherwise just show the latest commit
 
