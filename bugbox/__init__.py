@@ -394,7 +394,7 @@ class UnifiedDiff(object):
   
   DIFF = re.compile(r"^diff --git (?P<left>.*) (?P<right>.*)$")
   INDEX = re.compile(r"^index (?P<tail>[^\.].*)\.\.(?P<head>[^ ]+)( (?P<mode>.*))?$")
-  ACTION = re.compile(r"^(?P<action>deleted|new) file mode (?P<mode>.*)$")
+  ACTION = re.compile(r"^(?P<action>deleted|old|new)( file)? mode (?P<mode>.*)$")
   BINARY = re.compile(r"^(?P<format>Binary) files .*$")
   COMMIT = re.compile(r"^(?P<commit>[a-z0-9]{40})$")
   CHUNK = re.compile(r"^@@ -(?P<left_start>[0-9]+),(?P<left_len>[0-9]+) \+(?P<right_start>[0-9]+),(?P<right_len>[0-9]+) @@$")
@@ -450,10 +450,16 @@ class UnifiedDiff(object):
       
     if event == "action":
       
-      if values["action"] == "deleted":
+      if self._parsed_data[-1].has_key("action"):
+        del values["action"]
+      elif values["action"] == "deleted":
         values["action"] = "D"
+      elif values["action"] == "old":
+        values["action"] = "U"
       else:
         values["action"] = "A"
+        
+      print values
         
       self._parsed_data[-1].update(values)
       
@@ -565,6 +571,7 @@ class Commit(Record):
     self._keys_by_author = None
     self._keys_by_committer = None
     self._diff = None
+    self._patch = None
 
   @property
   def diff(self):
@@ -573,6 +580,13 @@ class Commit(Record):
       self._diff = UnifiedDiff(self.provider.commit_diff(self.id))
       
     return self._diff
+    
+  @property
+  def patch(self):
+    if self._patch == None:
+      self._patch = self.provider.commit_patch(self.id)
+      
+    return self._patch
     
   def has_key(self, key):
 
@@ -881,7 +895,40 @@ class Provider(object):
     
   def __getitem__(self, cls):
     return self.__provides__[cls]
+  
+class CacheMethod(object):
+  
+  def __init__(self, callback):
+    self.callback = callback
+  
+  def __call__(self, *args):
     
+    if not self._cache.has_key(args):
+      print "Caching..."
+      self._cache[args] = self.callback(*args)
+    
+    return self._cache[args]
+  
+class Cache(object):
+  
+  def __init__(self, label):
+    self.label = label
+    self.clear()
+    
+  def clear(self):
+    self._cache = {}
+    
+  def __call__(self, func):
+    
+    def cache(*args):
+
+      if not self._cache.has_key(args):
+        print "Caching..."
+        self._cache[args] = func(*args) 
+        
+      return self._cache[args]
+      
+    return cache
     
       
 class BugBox(Provider):
@@ -900,6 +947,7 @@ class BugBox(Provider):
   HAS_REFERENCE_CACHE = "has_reference"
   HISTORY_CACHE = "history"
   COMMIT_DIFF_CACHE = "commit_diff"
+  COMMIT_PATCH_CACHE = "commit_patch"
   
   def __init__(self, path):
     
@@ -941,7 +989,8 @@ class BugBox(Provider):
                self.TAG_CACHE,
                self.HAS_REFERENCE_CACHE,
                self.HISTORY_CACHE,
-               self.COMMIT_DIFF_CACHE)
+               self.COMMIT_DIFF_CACHE,
+               self.COMMIT_PATCH_CACHE)
     
   def call(self, *args, **kwargs):
     p = subprocess.Popen(args, cwd=kwargs.get("cwd", os.getcwd()), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -1318,6 +1367,27 @@ class BugBox(Provider):
       self.cache(cache)[revision] = o.splitlines()
       
     return self.cache(cache)[revision]
+   
+  def commit_patch(self, revision):
+
+    cache = self.COMMIT_PATCH_CACHE
+
+    if not self.synced:
+      self.sync()
+
+    if not self.iscached(cache):
+      self.cache(cache, {})
+
+    if not self.cache(cache).has_key(revision):
+
+      o, e, v = self.git("diff-tree", "-r", "-p", "--binary", "--full-index", revision)
+
+      if v != 0:
+        raise IOError(e)
+
+      self.cache(cache)[revision] = o
+
+    return self.cache(cache)[revision]
     
   def parse_history(self, head, tail):
     
@@ -1383,6 +1453,10 @@ class BugBox(Provider):
         self.cache(cache)[reference] = (None, None)
 
     return self.cache(cache)[reference]
+    
+  @Cache("test")
+  def test(self, value):
+    return value.lower()
     
   @property
   def systems(self):

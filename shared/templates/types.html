@@ -29,11 +29,13 @@
     return data?>
   
 <html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:xi="http://www.w3.org/2001/XInclude"
       xmlns:py="http://genshi.edgewall.org/" 
       xmlns:o="http://bugbox.localhost/" py:strip="">
 
   <py:match path="o:list">
-    <div class="list" py:attrs="select('@*')" >
+    <div py:attrs="select('@*')" >
+      <div class="list" >
       <div class="list-title" >
         <div py:if="browser == 'msie'" class="top left corner" />
         <div py:if="browser == 'msie'" class="top right corner" />
@@ -42,6 +44,7 @@
       
       <div class="list-content">
         ${select('*[local-name()!="h1"]|text()')}
+      </div>
       </div>
     </div>
   </py:match>
@@ -55,7 +58,7 @@
           <a href="${url('/tickets/%s' % ticket.system.id)}">${ticket.system.name}</a>
           
         </div>
-        <div class="right">${sorted(ticket.labels.values(), key=lambda x : x.head.author.date)[0].head.author.age}</div>
+        <div class="right caption">${sorted(ticket.labels.values(), key=lambda x : x.head.author.date)[0].head.author.age}</div>
         <div class="clear" />
       </li>
     </ul>
@@ -73,18 +76,11 @@
       </li>
     </ul>
   </py:match>
-  
-  <py:match path="o:author-name">
-    <py:choose>
-      <py:when test="author.name">${author.name}</py:when>
-      <py:otherwise test="">${author.email}</py:otherwise>
-    </py:choose>
-  </py:match>
 
   <py:match path="o:author-title">
     <div class="title">
       <div class="title-img">
-        <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=75' % author.digest}" />
+        <o:author-icon size="75" />
       </div>
       <py:choose>
         <py:when test="author.name">
@@ -114,12 +110,7 @@
           Authored ${commit.author.age} by 
           <py:choose>
             <py:when test="commit.author.user">
-              <a href="${url('/authors/%s' % commit.author.user.id)}">
-                <py:choose>
-                  <py:when test="commit.author.name">${commit.author.name}</py:when>
-                  <py:otherwise>${commit.author.email}</py:otherwise>
-                </py:choose>
-              </a>
+              <o:author-name py:with="author=commit.author" />
             </py:when>
             <py:when test="commit.author.name">${commit.author.name}</py:when>
             <py:otherwise />
@@ -172,13 +163,8 @@
 
   <py:match path="o:author-list-item">
     <div class="author list">
-      <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=32' % author.digest}" />
-      <a href="${url('/authors/%s' % author.id)}">
-        <py:choose>
-          <py:when test="author.name">${author.name}</py:when>
-          <py:otherwise test="">${author.email}</py:otherwise>
-        </py:choose>
-      </a>
+      <o:author-icon py:with="author=commit.author" size="32" />
+      <o:author-name />
     </div>
   </py:match>
 
@@ -186,16 +172,11 @@
     <ul py:if="authors">
       <li py:for="author in reversed(authors)">
         <div class="left gutter">
-          <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=32' % author.digest}" />
+          <o:author-icon size="32" />
         </div>
         <div class="left">
           <h2>
-            <a href="${url('/authors/%s' % author.id)}">
-              <py:choose>
-                <py:when test="author.name">${author.name}</py:when>
-                <py:otherwise test="">${author.email}</py:otherwise>
-              </py:choose>
-            </a>
+            <o:author-name />
           </h2>
           <a href="mailto:${author.email}">${author.email}</a>
         </div>
@@ -221,10 +202,8 @@
         <div class="label left gutter" />
         <div class="left">
           <h2><a href="${url('/tickets/%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name))}">${label.name}</a></h2>
-          <a href="${url('/tickets/%s' % label.ticket.system.id)}">${label.ticket.system.name}</a> / 
-          <a href="${url('/tickets/%s/%s' % (label.ticket.system.id, label.ticket.number))}">${label.ticket.number}</a>
         </div>
-        <div class="right">${label.head.committer.age}</div>
+        <div class="right"><span class="caption">${label.head.committer.age}</span></div>
         <div class="clear" />
       </li>
     </ul>
@@ -232,37 +211,48 @@
   
   
   <py:match path="o:unified-diff">
-    <dl class="diff">
-      <py:for each="file in diff.files">
-        <dt class="${'action_%s' % file.action.lower()}" title="${file.path}">${file.path}</dt>
-        <py:choose>
-          <py:when test="file.is_ascii() and len(file.chunks) != 0">
-            <dd>
-              <table>
-                <py:for each="chunk in file.chunks">
-                  <tr>
-                    <td class="count"><pre>...</pre></td>
-                    <td class="count"><pre>...</pre></td>
-                    <td class="line chunk">
-                      <pre>${"@@ -%d,%d +%d,%d @@" % (chunk.left_start, chunk.left_len, chunk.right_start, chunk.right_len)}</pre>
-                    </td>
-                  </tr>
-                  <tr class="${' '.join(['diff_%s' % k for k in ('left', 'right') if getattr(line, k) != None])}" py:for="line in chunk.lines">
-                    <td class="count"><pre><py:if test="line.is_left()">${line.left}</py:if></pre></td>
-                    <td class="count"><pre><py:if test="line.is_right()">${line.right}</py:if></pre></td>
-                    <td class="line">
-                      <pre>${line.data}</pre>
-                    </td>
-                  </tr>
-                </py:for>
-              </table>
-            </dd>
-          </py:when>
-          <py:otherwise>
-          </py:otherwise>
-        </py:choose>
-      </py:for>
-    </dl>
+    <ul py:if="len(diff.files) != 0" class="diff-list">
+      <li class="diff" py:if="len(diff.files) > 1">
+        <ul class="diff">
+          <py:for each="file in diff.files">
+            <li class="${'action_%s' % file.action.lower()}" title="${file.path}">
+              <o:a active="${len(file.chunks)}" href="${'#%s' % file.path}">${file.path}</o:a>
+            </li>
+          </py:for>
+        </ul>
+      </li>
+      <li>
+        <dl class="diff">
+          <py:for each="file in diff.files">
+            <py:if test="len(file.chunks) != 0">
+              <dt title="${file.path}" class="${'action_%s' % file.action.lower()}">
+                <a href="${'#%s' % file.path}" name="${file.path}">${file.path}</a>
+              </dt>
+              <dd>
+                <table>
+                  <py:for each="chunk in file.chunks">
+                    <tr>
+                      <td class="count"><pre>...</pre></td>
+                      <td class="count"><pre>...</pre></td>
+                      <td class="line chunk">
+                        <pre>${"@@ -%d,%d +%d,%d @@" % (chunk.left_start, chunk.left_len, chunk.right_start, chunk.right_len)}</pre>
+                      </td>
+                    </tr>
+                    <tr class="${' '.join(['diff_%s' % k for k in ('left', 'right') if getattr(line, k) != None])}" py:for="line in chunk.lines">
+                      <td class="count"><pre><py:if test="line.is_left()">${line.left}</py:if></pre></td>
+                      <td class="count"><pre><py:if test="line.is_right()">${line.right}</py:if></pre></td>
+                      <td class="line">
+                        <pre>${line.data}</pre>
+                      </td>
+                    </tr>
+                  </py:for>
+                </table>
+              </dd>
+            </py:if>
+          </py:for>
+        </dl>
+      </li>
+    </ul>
   </py:match>
     
   <py:match path="o:commit-instructions">
@@ -279,113 +269,44 @@
       </dd>
     </dl>
   </py:match>
-  
+
   <py:match path="o:commit-list">
     <ul py:if="commits">
-      <!--<li py:for="commit in sorted(commits, key=lambda x : x.date, reverse=True)">-->
       <li py:for="commit in commits">
-        <div class="left gutter">
-          <img py:if="commit.author and commit.author.user" src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=48' % commit.author.user.digest}" />
-        </div>
-        <div class="left">
-          <h2><a href="${url('/commits/%s' % commit.id)}">${truncate(commit.subject)}</a></h2>
-          
-          <py:choose>
-            <py:when test="commit.author and commit.author.user">
-              <a href="${url('/authors/%s' % commit.author.user.id)}">
-                <py:choose>
-                  <py:when test="commit.author.user.name">${commit.author.user.name}</py:when>
-                  <py:otherwise test="">${commit.author.email}</py:otherwise>
-                </py:choose>
-              </a>
-            </py:when>
-            <py:otherwise >
-              <py:if test="commit.author and commit.author.name">${commit.author.name}</py:if>
-            </py:otherwise>
-          </py:choose>
-          
-        </div>
-        <div py:if="commit.committer" class="right">${commit.committer.age}</div>
-        <div class="clear" />
+          <o:commit-message link="${select('@link')}" body="${select('@body')}" />
       </li>
     </ul>
   </py:match>
-
-  <py:match path="o:commit-message">
-    <dl>
-    <dd title="${commit.subject}">${commit.subject}</dd>
-    <dd py:if="commit.body">${commit.body}</dd>
-    </dl>
-  </py:match>  
+  
+  <py:match path="o:ticket-activity">
+    <ul py:if="labels">
+      <li py:for="label in labels">
+          <o:commit-message py:with="commit=label.head" title="${label.name}" href="${url('/tickets/%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name))}" link="${select('@link')}" body="${select('@body')}" />
+      </li>
+    </ul>
+  </py:match>
   
   <py:match path="o:commit-details">
     <dl>
       <dt>Hash</dt>
-      <dd><a href="${url('/commits/%s' % commit.id)}">${commit.id}</a></dd>
-      <py:choose>
-        <py:when test="commit.author and commit.committer and commit.author.email == commit.committer.email">
-          <dt>Authored and Committed by</dt>
-          <dd>
-            <div class="left gutter">
-              <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=32' % commit.author.digest}" />
-            </div>
-            <div class="left">
-              <h3>
-                <a href="${url('/authors/%s' % commit.author.email)}">
-                  <py:choose>
-                    <py:when test="commit.author.name">${commit.author.name}</py:when>
-                    <py:otherwise test="">${commit.author.email}</py:otherwise>
-                  </py:choose>
-                </a>
-              </h3>  
-              <span>${commit.author.age}</span>
-            </div>
-            <div class="clear" />
-          </dd>
-        </py:when>
-        <py:when test="commit.author or commit.committer">
-          <py:if test="commit.author">
-            <dt>Authored by</dt>
-            <dd>
-              <div class="left gutter">
-                <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=32' % commit.author.digest}" />
-              </div>
-              <div class="left">
-                <h3>
-                  <a href="${url('/authors/%s' % commit.author.email)}">
-                    <py:choose>
-                      <py:when test="commit.author.name">${commit.author.name}</py:when>
-                      <py:otherwise test="">${commit.author.email}</py:otherwise>
-                    </py:choose>
-                  </a>
-                </h3>  
-                <span>${commit.author.age}</span>
-              </div>
-              <div class="clear" />
-            </dd>
-          </py:if>
-          <py:if test="commit.committer">
-            <dt>Committed by</dt>
-            <dd>
-              <div class="left gutter">
-                <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=32' % commit.committer.digest}" />
-              </div>  
-              <div class="left">
-                 <h3>
-                   <a href="${url('/authors/%s' % commit.committer.email)}">
-                     <py:choose>
-                       <py:when test="commit.committer.name">${commit.committer.name}</py:when>
-                       <py:otherwise test="">${commit.committer.email}</py:otherwise>
-                     </py:choose>
-                   </a>
-                 </h3>  
-                 <span>${commit.committer.age}</span>
-               </div>
-              <div class="clear" />
-            </dd>
-          </py:if>
-        </py:when>
-      </py:choose>
+      <dd>${commit.id}</dd>
+      <dt>Patch</dt>
+      <dd><a href="${url('/commits/%s/patch' % commit.id)}" title="${'%s.patch' % commit.id}" >Download</a></dd>
+      <py:if test="commit.committer">
+        <dt>Committed by</dt>
+        <dd>
+          <div class="left gutter">
+            <o:author-icon py:with="author=commit.committer" size="32" />
+          </div>  
+          <div class="left">
+             <h3>
+               <o:author-name py:with="author=commit.author" />
+             </h3>  
+             <span>${commit.committer.age}</span>
+           </div>
+          <div class="clear" />
+        </dd>
+      </py:if>
       <dt>Date</dt>
       <dd>${commit.committer.date.strftime("%a, %d %b %Y %H:%M:%S %Z")}</dd>
       <py:if test="commit.parents">
@@ -408,5 +329,7 @@
       </py:if>
     </dl>
   </py:match>
+  
+  <xi:include href="items.tmpl" />
 
 </html>

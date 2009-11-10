@@ -9,20 +9,19 @@
   <body>
     <o:label-title />
     
+    <o:list py:with="commits=label.commit_history_values()" title="History" class="one right tert">
+      <o:commit-list link="true" body="false" />
+    </o:list>
+    
     <o:list title="Instructions" class="two left">
       <o:commit-instructions type="label" url="${label.head.remote_url}" ref="${'%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name)}" />
     </o:list>
-    
-    <o:list py:with="commit=label.head" title="Details" class="one right">
-      <o:commit-details />
-    </o:list>
-    
-    <o:list py:if="len(label.commit_history_keys()) > 1" py:with="commits=label.commit_history_values()" title="History" class="two left">
-      <o:commit-list />
-    </o:list>
-    
-    <o:list title="Diff" class="three left" py:if="len(label.head.diff.files) > 0" py:with="diff=label.head.diff">
-      <o:unified-diff  />
+
+    <o:list title="Latest Change" class="two left second" py:if="len(label.head.diff.files) > 0" py:with="diff=label.head.diff; commit=label.head">
+      <ul>
+        <li><o:commit-message /></li>
+        <li><o:unified-diff  /></li>
+      </ul>
     </o:list>
 
   </body>

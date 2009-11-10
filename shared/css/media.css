@@ -112,10 +112,15 @@ html, body {
 .two .gutter.left,
 .three .gutter.left { margin-right: 9px; }
 
+.one h2 { font-size: 18px; }
+
 .top { top: 0; }
 .left { left: 0; }
 .right { right: 0; }
 .bottom { bottom: 0; }
+
+.caption { color: #666; font-size: 18px;}
+.one .caption { font-size: 12px;}
 
 .list-title {
     background: #f96;
@@ -129,6 +134,7 @@ html, body {
     padding: 5px;
     padding-left: 10px;
 }
+
 
 .list-title a {
     color: white;
@@ -180,10 +186,56 @@ html, body {
     clear: both;
 }
 
+.message {
+    font-size: 11px;
+    overflow: hidden;
+}
 
-.diff dt.action_u:before { content: "  "; }
-.diff dt.action_a:before { content: "+ "; }
-.diff dt.action_d { text-decoration: line-through; }
+.message .image {
+    width: 48px;
+    margin-bottom: -48px;
+}
+
+.message .content {
+    width: 100%;
+    margin-left: 60px;
+}
+
+.message .header .author { font-weight: bold;}
+.message .header { color: #999; font-size: 12px;}
+
+.message .body{ margin-top: 10px; margin-bottom: 5px; line-height: 18px;}
+.message .body .subject{ font-weight: bold; margin-bottom: 18px; }
+
+li.diff {
+    padding-top: 0;
+    margin: 0;
+}
+
+.diff dt, .diff li{  font-size: 12px; }
+
+.diff li { padding: 2px; }
+
+.diff li.action_u,
+.diff dt.action_u { background: url('../img/tag-updated.gif') right center no-repeat; }
+.diff li.action_u,
+.diff li.action_u a,
+.diff dt.action_u,
+.diff dt.action_u a { color: #396; }
+    
+.diff li.action_d,
+.diff dt.action_d { background: url('../img/tag-deleted.gif') right center no-repeat; }
+.diff li.action_d,
+.diff li.action_d a,
+.diff dt.action_d,
+.diff dt.action_d a { text-decoration: line-through; color: #999; }
+    
+.diff li.action_a,
+.diff dt.action_a { background: url('../img/tag-new.gif') right center no-repeat; }
+.diff li.action_a,
+.diff li.action_a a,
+.diff dt.action_a,
+.diff dt.action_a a { color: #39c; }
 
 .diff dd {
     background: #ccc;
@@ -195,13 +247,22 @@ html, body {
     -webkit-border-top-right-radius: 10px;
     -moz-border-radius-topleft: 10px;
     -moz-border-radius-topright: 10px;
+    overflow-x: auto;
+    
+    border-right: 1px solid #ddd;
+    border-left: 1px solid #ddd;
 }
 
 .diff .count {
     color: #666;
     text-align: center;
     background: #eaeaea;
-    width: 40px;
+    border-right: 1px solid #ddd;
+}
+
+.diff .count pre {
+    padding-left: 5px;
+    padding-right: 5px;
 }
 
 .diff table {
@@ -212,16 +273,23 @@ html, body {
      background: #fcfcfc;
 }
 
-.diff td {
-    border-left: 1px solid #ddd;
-}
-
 .diff .line {
     color: #000;
     padding: 1px;
     padding-left: 10px;
     padding-right: 10px;
-    border-right: 1px solid #ddd;
+}
+
+.tag {
+    background: red;
+    color: white;
+    padding: 5px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    -webkit-border-top-left-radius: 5px;
+    -webkit-border-top-right-radius: 5px;
+    -moz-border-radius-topleft: 5px;
+    -moz-border-radius-topright: 5px;
 }
 
 .chunk { background: #eaf2f5; }

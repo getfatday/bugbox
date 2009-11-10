@@ -9,14 +9,13 @@
   <body>
     <o:ticket-title />
     
-    <o:list py:with="labels=ticket.labels.values()" class="two left gutter" title="Labels" >
-      <o:label-list />
+    <o:list title="Instructions" class="two left">
+      <o:commit-instructions type="ticket" url="${ticket.labels.values()[0].head.remote_url}" ref="${'%s/%s[/label]' % (ticket.system.id, ticket.number)}" />
     </o:list>
     
- <!--
-    <o:list py:with="authors=ticket.authors.values()" class="one left" title="Authors" >
-       <o:author-list />
-     </o:list>-->
+    <o:list py:with="labels=ticket.labels.values()" class="one right" title="Labels" >
+      <o:label-list />
+    </o:list>
  
 
   </body>

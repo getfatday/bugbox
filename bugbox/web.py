@@ -149,10 +149,15 @@ class BugBoxApp(object):
 
   @cherrypy.expose
   @template.output('commits.html')
-  def commits(self, digest=None):
-
+  def commits(self, digest=None, action=None):
+    
     if digest and self.bugbox.commits.has_key(digest):
-      return template.render('commit.html', commit=self.bugbox.commits[digest])
+      if action == "patch":
+        cherrypy.response.headers['Content-Type'] = 'text/x-diff'
+        cherrypy.response.headers['Content-Disposition'] = 'attachment; filename="%s.patch"' % digest
+        return self.bugbox.commits[digest].patch
+      else:
+        return template.render('commit.html', commit=self.bugbox.commits[digest])
 
     return template.render(commits=self.bugbox.commits.values_by_date()[0:25])
 

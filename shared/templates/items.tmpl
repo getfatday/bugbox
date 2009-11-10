@@ -1,0 +1,54 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/" 
+      xmlns:o="http://bugbox.localhost/" py:strip="">
+      
+  <py:match path="o:commit-message">
+    <div class="message">
+      <div class="left gutter image">
+        <o:author-icon py:with="author=commit.author" size="48" />
+      </div>  
+      <div class="left content">
+        <div class="header">
+          <span class="author" py:choose="">
+            <o:a py:when="len(str(select('@title'))) != 0" href="${select('@href')}" >${select('@title')}</o:a>
+            <o:author-name py:otherwise="" py:with="author=commit.author" />
+          </span>
+        <span>${commit.author.age}</span>
+        </div>
+        <div class="body">
+        <span class="subject" title="${commit.subject}" >
+          <o:a active="${select('@link')}" href="${url('/commits/%s' % commit.id)}">${commit.subject}</o:a>
+        </span>
+        <py:if test="str(select('@body')).lower() not in ['false', 'f', 'no', 'n', '0']"><br />
+        ${commit.body}</py:if>
+        </div>
+      </div>
+      <div class="clear" />
+    </div>    
+    <div class="clear" />
+  </py:match>
+  
+  <py:match path="o:author-icon">
+    <img src="${'http://www.gravatar.com/avatar/%s?d=identicon&amp;s=%s' % (author.digest, select('@size'))}" />
+  </py:match>
+  
+  <py:match path="o:author-name" >
+    <o:a href="${url('/authors/%s' % author.email)}">
+      <py:choose>
+        <py:when test="author.name">${author.name}</py:when>
+        <py:otherwise test="">${author.email}</py:otherwise>
+      </py:choose>
+    </o:a>
+  </py:match>
+  
+  <py:match path="o:a">
+    <py:choose>
+      <py:when test="len(str(select('@href'))) > 0 and str(select('@active')).lower() not in ['false', 'f', 'no', 'n', '0']">
+        <a href="${select('@href')}">${select('*|text()')}</a>
+      </py:when>
+      <py:otherwise test="">${select('*|text()')}</py:otherwise>
+    </py:choose>
+  </py:match>
+
+</html>

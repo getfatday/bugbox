@@ -15,6 +15,7 @@ BugBox should be:
 
 ** Core
 
+
 *** TODO [#B] Support for GIT tree and blob objects.
 
 Create classes to support tree and blob objects. This will allow the web interface to show
@@ -95,6 +96,11 @@ of downloading a zipped series of patches.
 Show tree and files for a given commit.
 
 *** TODO [#C] Support for Annotations.
+
+
+** Tools
+
+*** TODO [#C] Create repo2bugbox script to upload repo changes to a BugBox ticket
 
 
 ** Authentication
