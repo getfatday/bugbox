@@ -12,10 +12,13 @@
       <link href="${url('/css/reset.css')}" media="screen" rel="stylesheet" type="text/css" />
       <link href="${url('/css/type.css')}" media="screen" rel="stylesheet" type="text/css" />
       <link href="${url('/css/media.css')}" media="screen" rel="stylesheet" type="text/css" />
+      <link href="${url('/css/thickbox.css')}" media="screen" rel="stylesheet" type="text/css" />
       <link rel="icon" type="image/gif" href="${url('/img/ticket.gif')}" />
       
       <link py:if="browser == 'msie'" href="${url('/css/media-ie.css')}" media="screen" rel="stylesheet" type="text/css" />
       
+      <script type="text/javascript" src="${url('/js/jquery.js')}"></script>
+      <script type="text/javascript" src="${url('/js/thickbox.js')}"></script>
       
       ${select('*[local-name()!="title"]')}
     </head>

@@ -33,6 +33,6 @@ setup(name = "bugbox",
     command.version = bugbox.shell.version:Version
     command.hook = bugbox.shell.hook:Hook
     [bugbox.plugin.hook]
-    command.update = bugbox.shell.hook:Update
+    command.prereceive = bugbox.shell.hook:Pre_Receive
     """,
 )

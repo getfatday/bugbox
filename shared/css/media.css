@@ -78,6 +78,8 @@ html, body {
     background: url("../img/label.gif") top left no-repeat;
 }
 
+.label-item h2 { font-size: 18px; } 
+
 .title-img.label {
     width: 75px; height: 75px;
     background: url("../img/label-title.gif") top left no-repeat;
@@ -119,8 +121,12 @@ html, body {
 .right { right: 0; }
 .bottom { bottom: 0; }
 
-.caption { color: #666; font-size: 18px;}
+.caption { color: #666; font-size: 16px;}
 .one .caption { font-size: 12px;}
+
+pre { color: #666; }
+
+a pre { color: inherit; }
 
 .list-title {
     background: #f96;
@@ -299,3 +305,5 @@ li.diff {
 .diff_left .line pre:before { content: "- "; }
 .diff_right .line pre:before { content: "+ "; }
 .diff_right.diff_left .line pre:before { content: "  "; }
+
+.thickbox-target { display: none; }

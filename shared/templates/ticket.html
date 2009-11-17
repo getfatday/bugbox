@@ -9,11 +9,11 @@
   <body>
     <o:ticket-title />
     
-    <o:list title="Instructions" class="two left">
-      <o:commit-instructions type="ticket" url="${ticket.labels.values()[0].head.remote_url}" ref="${'%s/%s[/label]' % (ticket.system.id, ticket.number)}" />
+    <o:list title="Details" class="one right">
+      <o:ticket-details />
     </o:list>
-    
-    <o:list py:with="labels=ticket.labels.values()" class="one right" title="Labels" >
+
+    <o:list py:with="labels=sorted(ticket.labels.values(), cmp=lambda x,y : cmp(x.id, y.id), reverse=True)" class="two left" title="Labels" >
       <o:label-list />
     </o:list>
  

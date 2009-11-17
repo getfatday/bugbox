@@ -42,7 +42,8 @@ Add GIT hooks:
 cat > $GIT_DIR/hooks/update << EOF
 #! /bin/bash
 
-bugbox hook update $1 $2 $3
+read oldrev newrev ref
+bugbox hook pre-receive $ref $oldrev $newrev
 EOF
 </pre>
 
