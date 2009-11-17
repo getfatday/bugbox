@@ -18,19 +18,19 @@ class Hook(TreeCommand):
   helpSummary = "GIT Hooks for a BugBox repository"
 
 
-class Update(Command):
+class Pre_Receive(Command):
   
-  helpSummary = "Use in GIT update hook to integrate BugBox"
+  helpSummary = "Use in GIT pre-receive hook to integrate BugBox"
   helpUsage = """<ref> <oldrev> <newrev>"""
-  helpDescription = """Use in GIT update hook to integrate BugBox.
+  helpDescription = """Use in GIT pre-receive hook to integrate BugBox.
 
 Checks that reference names are valid and then calls system specific hook. A
 executable system hook should be placed in your GIT_DIR/hooks directory with a 
-name of update.<system name>.
+name of pre-receive.<system name>.
 
 For example:
 
-GIT_DIR/hooks/update.jira"""
+GIT_DIR/hooks/pre-receive.jira"""
     
   def execute(self, opt, args):
     
@@ -100,7 +100,7 @@ Please use one of the following:
 
     
     # Call any system hooks
-    hook = os.path.join(bbox.path, "hooks", "update.%s" % system)
+    hook = os.path.join(bbox.path, "hooks", "pre-receive.%s" % system)
             
     if os.path.exists(hook) and os.access(hook, os.X_OK):
       

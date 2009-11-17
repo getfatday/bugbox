@@ -6,15 +6,18 @@ BugBox is a application used to post integration requests associated with extern
 __version__ = '0.0.2'
 __dist__ = 'git://github.com/getfatday/bugbox.git'
 
-import cherrypy, os, subprocess, re, sys, hashlib, types, time, math, stat
+import cherrypy, os, subprocess, re, sys, hashlib, types, time, math, stat, tempfile
 from datetime import tzinfo, timedelta, datetime
 from email.utils import parsedate
+from zipfile import ZipFile
 
-REF_PATTERN = re.compile(r"refs/(heads|tags)/(?P<system>[^/]*)/(?P<number>[^/]*)(/(?P<label>[^/]*))?")
+REF_PATTERN = re.compile(r"refs/(heads|tags)/(?P<system>[^/]*)/(?P<number>[^/]*)(/(?P<label>.*))?")
 
-def debug():
-  import pdb
-  pdb.set_trace()
+def debug(test=None):
+
+  if test == None or test:
+    import pdb
+    pdb.set_trace()
 
 def profile(func):
     def newfunc(*args, **kwargs):
@@ -494,7 +497,9 @@ class UnifiedDiff(object):
         else:
           return False
           
-      else: 
+      else:          
+        values["data"] = values["data"].decode('utf-8', 'replace')
+        print values["data"]
         self._parsed_data[-1]["chunks"][-1]["lines"].append(values)
         
     
@@ -732,6 +737,7 @@ class Label(Record):
     self._name     = None
     self._parse_labels = None
     self._parse_head = None
+    self._patch = None
       
   def has_key(self, key):
 
@@ -751,6 +757,18 @@ class Label(Record):
     self._tail_index = values["tail"]
     
     Record.sync(self)
+
+  @property
+  def patch(self):
+    
+    if self.tail and self.tail.id != self.head.id:
+      f = open(self.provider.label_patch(len(self.commit_history_keys()), self.head.id))
+      d = f.read()
+      f.close()
+    else:
+      d = self.head.patch
+      
+    return d
 
   @property
   def ticket(self):
@@ -873,6 +891,14 @@ class Ticket(Record):
   @property
   def number(self):
     return self._number
+
+  @property
+  def patch(self):      
+    f = open(self.provider.ticket_patch(self.id))
+    d = f.read()
+    f.close()
+      
+    return d
       
 class provider_type(type):
 
@@ -948,6 +974,8 @@ class BugBox(Provider):
   HISTORY_CACHE = "history"
   COMMIT_DIFF_CACHE = "commit_diff"
   COMMIT_PATCH_CACHE = "commit_patch"
+  LABEL_PATCH_CACHE = "label_patch"
+  TICKET_PATCH_CACHE = "ticket_patch"
   
   def __init__(self, path):
     
@@ -972,10 +1000,11 @@ class BugBox(Provider):
     
   @property
   def synced(self):
-    return self.modified != self._modified
+    return self.modified == self._modified
     
   def sync(self):
-    self._modified = self._provider.modified
+    print self._modified, self.modified
+    self._modified = self.modified
     self.clear(self.URL_CACHE,
                self.SYSTEM_CACHE,
                self.COMMIT_CACHE,
@@ -990,7 +1019,9 @@ class BugBox(Provider):
                self.HAS_REFERENCE_CACHE,
                self.HISTORY_CACHE,
                self.COMMIT_DIFF_CACHE,
-               self.COMMIT_PATCH_CACHE)
+               self.COMMIT_PATCH_CACHE,
+               self.LABEL_PATCH_CACHE,
+               self.TICKET_PATCH_CACHE)
     
   def call(self, *args, **kwargs):
     p = subprocess.Popen(args, cwd=kwargs.get("cwd", os.getcwd()), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -1287,7 +1318,7 @@ class BugBox(Provider):
     o, e, v = self.git("tag", "-f", "-a", "-m", "''", "%s/%s/%s" % (system, ticket, label), revision)
     
     if v != 0:
-      raise IOError(e)
+      raise IOError(o)
     
   def has_ref(self, reference):
     
@@ -1388,6 +1419,75 @@ class BugBox(Provider):
       self.cache(cache)[revision] = o
 
     return self.cache(cache)[revision]
+
+  def ticket_patch(self, index):
+
+    cache = self.TICKET_PATCH_CACHE
+
+    if not self.synced:
+      self.sync()
+
+    if not self.iscached(cache):
+      self.cache(cache, {})
+
+    if self.tickets.has_key(index) and ( not self.cache(cache).has_key(index) or not os.path.isfile(self.cache(cache)[index]) ):
+
+      z = tempfile.mkstemp()[-1]
+      zf = ZipFile(z, mode="w")
+      p = index.replace("/","_")
+      t = self.tickets[index]
+
+      for l in t.labels.values():
+        l_len = len(l.commit_history_keys())
+
+        if l_len > 1:
+          l_path = self.label_patch(len(l.commit_history_keys()), l.head.id)
+          lf = ZipFile(l_path, mode="r")
+          
+          for patch in lf.namelist():
+            zf.writestr("%s/%s/%s" % (p, l.name, patch), lf.read(patch))
+
+        else:
+          zf.writestr("%s/%s/0001-%s.patch" % (p, l.name, l.head.id), self.commit_patch(l.head.id))
+      
+      zf.close()
+      
+      self.cache(cache)[index] = z
+
+    return self.cache(cache)[index]
+
+  def label_patch(self, length, revision):
+
+    cache = self.LABEL_PATCH_CACHE
+
+    if not self.synced:
+      self.sync()
+
+    if not self.iscached(cache):
+      self.cache(cache, {})
+
+    if not self.cache(cache).has_key((length, revision)) or not os.path.isfile(self.cache(cache)[(length, revision)]):
+      
+      p = tempfile.mkdtemp()
+      
+      o, e, v = self.git("format-patch", "-o", p, "-k", "-%s" % length, revision)
+
+      if v != 0:
+        raise IOError(e)
+        
+      # TODO Hook into cherrypy on shutdown to remove temp files
+      z = tempfile.mkstemp()[-1]
+      zf = ZipFile(z, mode="w")
+      
+      for f in o.splitlines():
+        fp = f.strip()
+        zf.write(fp, os.path.basename(fp))
+        
+      zf.close()
+      
+      self.cache(cache)[(length, revision)] = z
+
+    return self.cache(cache)[(length, revision)]
     
   def parse_history(self, head, tail):
     

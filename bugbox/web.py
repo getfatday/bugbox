@@ -28,9 +28,9 @@ class Template(object):
       for rendering, and which serialization method and options should be
       applied.
       """
+
       def decorate(func):
           def wrapper(*args, **kwargs):
-              #debug()
               cherrypy.thread_data.template = self.loader.load(filename)
               opt = options.copy()
               if method == 'html':
@@ -87,6 +87,10 @@ class BugBoxApp(object):
       '/img' : {
         'tools.staticdir.on' : True,
         'tools.staticdir.dir' : "shared/img"
+      },
+      '/js' : {
+        'tools.staticdir.on' : True,
+        'tools.staticdir.dir' : "shared/js"
       }
     }
   
@@ -111,12 +115,11 @@ class BugBoxApp(object):
   @cherrypy.expose
   @template.output('index.html')
   def index(self):
-    #debug()
     return template.render(systems=self.bugbox.systems.values(), tickets=self.bugbox.tickets.values())
   
   @cherrypy.expose
   @template.output('tickets.html')
-  def tickets(self, system=None, ticket=None, label=None):
+  def tickets(self, system=None, ticket=None, *label, **kwargs):
     
     if system and self.bugbox.systems.has_key(system):
       
@@ -125,12 +128,32 @@ class BugBoxApp(object):
       
       if ticket and system.tickets.has_key(ticket):
         
-        label = "refs/heads/%s/%s" % (ticket, label)
+        label_ref = "refs/heads/%s/%s" % (ticket, "/".join(label))
         
-        if label and system.tickets[ticket].labels.has_key(label):
-          return template.render('label.html', system=system, ticket=system.tickets[ticket], label=system.tickets[ticket].labels[label])
+        if label_ref and system.tickets[ticket].labels.has_key(label_ref):
+
+          if kwargs.has_key("a") and kwargs["a"] == "patch":
+            label_obj = system.tickets[ticket].labels[label_ref]
+            
+            if label_obj.tail and label_obj.tail != label_obj.head:
+              cherrypy.response.headers['Content-Type'] = 'application/zip'
+              cherrypy.response.headers['Content-Disposition'] = 'attachment; filename="%s_%s_%s.zip"' % (system, ticket, "_".join(label))
+              return label_obj.patch
+            else:
+              cherrypy.response.headers['Content-Type'] = 'text/x-diff'
+              cherrypy.response.headers['Content-Disposition'] = 'attachment; filename="%s.patch"' % label_obj.head.id
+              return label_obj.head.patch
+              
+          else:
+            return template.render('label.html', system=system, ticket=system.tickets[ticket], label=system.tickets[ticket].labels[label_ref])
         
-        return template.render('ticket.html', system=system, ticket=system.tickets[ticket])
+        if kwargs.has_key("a") and kwargs["a"] == "patch":
+          ticket_obj = system.tickets[ticket]
+          cherrypy.response.headers['Content-Type'] = 'application/zip'
+          cherrypy.response.headers['Content-Disposition'] = 'attachment; filename="%s.zip"' % ticket.replace("/", "_")
+          return ticket_obj.patch
+        else:
+          return template.render('ticket.html', system=system, ticket=system.tickets[ticket])
         
       tickets = system.tickets.values()
     else:
@@ -205,7 +228,10 @@ rd = root_dir(__file__)
     
 cherrypy.config.update({
   'tools.staticdir.root': rd ,
-  'template.dir': os.path.join(rd, 'shared/templates')
+  'template.dir': os.path.join(rd, 'shared/templates'),
+  'tools.encode.on': True, 
+  'tools.encode.encoding': 'utf-8',
+  'tools.decode.on': True,
 })
 
 def start(path="/"):

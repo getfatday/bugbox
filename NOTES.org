@@ -1,6 +1,6 @@
 * BugBox
 
-Bug integration system based on GIT.
+Bug integration2 system based on GIT.
 
 Allow an alternative to the GIT patch submission process, that isn't as heavy handed as Gerrit.
 

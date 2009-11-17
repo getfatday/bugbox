@@ -198,10 +198,11 @@
   
   <py:match path="o:label-list">
     <ul py:if="labels">
-      <li py:for="label in reversed(labels)">
+      <li class="label-item" py:for="label in reversed(labels)">
         <div class="label left gutter" />
         <div class="left">
           <h2><a href="${url('/tickets/%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name))}">${label.name}</a></h2>
+	  <pre>${'%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name)}</pre>
         </div>
         <div class="right"><span class="caption">${label.head.committer.age}</span></div>
         <div class="clear" />
@@ -255,6 +256,39 @@
     </ul>
   </py:match>
     
+  <py:match path="o:label-details">
+    <dl>
+      <dt>Git Reference</dt>
+      <dd>
+	<a class="thickbox" title="Instructions" href="#TB_inline?height=145&amp;width=600&amp;inlineId=label_instructions">
+	  <pre>${'%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name)}</pre>
+	</a>
+	 <div class="thickbox-target"  id="label_instructions">
+	  <o:commit-instructions type="label" url="${label.head.remote_url}" ref="${'%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name)}" />
+	</div>
+      </dd>
+      <dt>Patches</dt>
+      <dd><a href="${url('/tickets/%s/%s/%s?a=patch' % (label.ticket.system.id, label.ticket.number, label.name))}" title="${'%s_%s_%s.zip' % (label.ticket.system.id, label.ticket.number, '_'.join(label.name.split('/')))}" >Download</a></dd>
+    </dl>
+  </py:match>  
+
+
+  <py:match path="o:ticket-details">
+    <dl>
+      <dt>Git Reference</dt>
+      <dd>
+	<a class="thickbox" title="Instructions" href="#TB_inline?height=145&amp;width=600&amp;inlineId=ticket_instructions">
+	  <pre>${'%s/%s/&lt;label-name&gt;' % (ticket.system.id, ticket.number)}</pre>
+	</a>
+	 <div class="thickbox-target"  id="ticket_instructions">
+	  <o:commit-instructions type="ticket" url="${ticket.labels.values()[0].head.remote_url}" ref="${'%s/%s/&lt;label-name&gt;' % (ticket.system.id, ticket.number)}" />
+	</div>
+      </dd>
+      <dt>Patches</dt>
+      <dd><a href="${url('/tickets/%s/%s?a=patch' % (ticket.system.id, ticket.number))}" title="${'%s_%s.zip' % (ticket.system.id, ticket.number)}" >Download</a></dd>
+    </dl>
+  </py:match>
+
   <py:match path="o:commit-instructions">
     <dl>
       <dt>Adding this BugBox repository</dt>
@@ -281,11 +315,11 @@
   <py:match path="o:ticket-activity">
     <ul py:if="labels">
       <li py:for="label in labels">
-          <o:commit-message py:with="commit=label.head" title="${label.name}" href="${url('/tickets/%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name))}" link="${select('@link')}" body="${select('@body')}" />
+          <o:commit-message py:with="commit=label.head" title="${label.name}" href="${url('/tickets/%s/%s/%s' % (label.ticket.system.id, label.ticket.number, label.name))}" link="false" body="false" />
       </li>
     </ul>
   </py:match>
-  
+
   <py:match path="o:commit-details">
     <dl>
       <dt>Hash</dt>
