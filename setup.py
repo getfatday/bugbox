@@ -7,18 +7,16 @@ Created by Ian Anderson on 2009-09-15.
 
 import os
 from setuptools import setup
-from bugbox import __version__ as version
-from bugbox import __doc__ as long_description
 
 setup(name = "bugbox",
-    version = version,
+    version = '0.0.2',
     description = "Bugbox utilities module",
     author = "Ian Anderson",
     author_email = "getfatday@gmail.com",
     url = "http://github.com/getfatday/bugbox",
     packages = ['bugbox','bugbox/shell',],
     scripts = ["bin/bugbox"],
-    long_description = long_description,
+    long_description = "BugBox is a application used to post integration requests associated with external bug systems",
     test_suite = "test.run",
     dependency_links = [
       "http://github.com/getfatday/ducksoup/downloads",

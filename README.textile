@@ -15,7 +15,7 @@ cd bugbox
 
 h2. Creating a BugBox Repository
 
-Run the following shell commands, replace GIT_DIR with you local path:
+Run the following shell commands, replace GIT_DIR with your local path:
 
 <pre>
 export GIT_DIR="/example/path/bugboxd.git"
@@ -25,10 +25,10 @@ git --bare init
 Specify a url for external access:
 
 <pre>
-git config bugbox.url "ssh://example.com/bugbox.git"
+git config bugbox.url "ssh://example.com/bugboxd.git"
 </pre>
 
-Specify a ticketing system, multiple systems can be defined with the this
+Specify a ticketing system, multiple systems can be defined with this
 pattern @ticket.<system>@:
 
 <pre>
@@ -54,7 +54,7 @@ Creating the "CherryPy":http://www.cherrypy.org/ config:
 cat > /example/path/bugbox.cfg << EOF
 [global]
 bugbox.dir = "/example/path/bugboxd.git"
-tree.bugbox: cherrypy.tree.mount(bugbox.web.root, "/", bugbox.web.root.config)
+tree.bugbox = cherrypy.tree.mount(bugbox.web.root, "/", bugbox.web.root.config)
 EOF
 </pre>
 
@@ -69,7 +69,7 @@ Mounting to an existing daemon tree:
 <pre>
 [global]
 ...
-tree.bugbox = cherrypy.tree.mount(bugbox.web.root, '/bugbox', '/example/path/bugbox.cfg')
+tree.bugbox = cherrypy.tree.mount(bugbox.web.root, '/bugbox', bugbox.web.root.config)
 ...
 </pre>
 
