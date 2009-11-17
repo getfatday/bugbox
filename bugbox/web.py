@@ -24,9 +24,8 @@ class Template(object):
     return cherrypy.url(path=path, relative='server')
 
   def output(self, filename, method='html', encoding='utf-8', **options):
-      """Decorator for exposed methods to specify what template the should use
-      for rendering, and which serialization method and options should be
-      applied.
+      """Decorator for exposed methods to specify what template the method should 
+      use for rendering, and which serialization method and options should be applied.
       """
       def decorate(func):
           def wrapper(*args, **kwargs):
@@ -162,10 +161,9 @@ class BugBoxApp(object):
     return template.render(commits=self.bugbox.commits.values_by_date()[0:25])
 
   @cherrypy.expose
+  @template.output('rss.xml', method='xml')
   def rss(self, id=None):
-    tmpl = loader.load('rss.xml')
-    stream = tmpl.generate(tickets=self.bugbox.tickets.values()) 
-    return stream.render('xml')
+    return template.render('rss.xml', systems=self.bugbox.systems.values(), tickets=self.bugbox.tickets.values())
     
   def namespace(self, k, v):
       

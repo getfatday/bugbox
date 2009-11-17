@@ -9,7 +9,7 @@
 
   <entry py:for="ticket in reversed(tickets)">
     <title>${ticket.system.id}/${ticket.number}</title>
-    <link rel="alternate" href="${'/tickets/%s/%s' % (ticket.system.id, ticket.number)}" type="text/html"/>
+    <link rel="alternate" href="${url('/tickets/%s/%s' % (ticket.system.id, ticket.number))}" type="text/html"/>
     <id>${'/tickets/%s/%s' % (ticket.system.id, ticket.number)}</id>
     <author>
       <name>${ticket.id}</name>
