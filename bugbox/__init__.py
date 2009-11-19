@@ -11,7 +11,8 @@ from datetime import tzinfo, timedelta, datetime
 from email.utils import parsedate
 from zipfile import ZipFile
 
-REF_PATTERN = re.compile(r"refs/(heads|tags)/(?P<system>[^/]*)/(?P<number>[^/]*)(/(?P<label>.*))?")
+TAIL = "tails"
+REF_PATTERN = re.compile(r"refs/(heads|tags/%s)/(?P<system>[^/]*)/(?P<number>[^/]*)(/(?P<label>.*))?" % TAIL)
 
 def debug(test=None):
 
@@ -964,10 +965,15 @@ def cache(func):
   return _cache(func)
     
 class BugBox(Provider):
-  
+
   def __init__(self, path):
     
     self._path = path
+    self._paths = [
+      os.path.join(self._path, "config"),
+      os.path.join(self._path, "objects"),
+      os.path.join(self._path, "objects", "pack")
+    ]
     self._parse_systems = None
     self._modified = None
     
@@ -983,14 +989,7 @@ class BugBox(Provider):
     
   @property
   def modified(self):
-    
-    config = os.stat(os.path.join(self._path, "config"))[stat.ST_MTIME]
-    objects = os.stat(os.path.join(self._path, "objects"))[stat.ST_MTIME]
-
-    if config > objects:
-      return config
-
-    return objects
+    return max(*[os.stat(p)[stat.ST_MTIME] for p in self._paths])
     
   @property
   def synced(self):
@@ -1204,7 +1203,7 @@ class BugBox(Provider):
       raise AttributeError("Bad reference '%s'" % reference)
       return
       
-    o, e, v = self.git("tag", "-f", "-a", "-m", "''", "%s/%s/%s" % (system, ticket, label), revision)
+    o, e, v = self.git("tag", "-f", "-a", "-m", "''", "%s/%s/%s/%s" % (TAIL, system, ticket, label), revision)
     
     if v != 0:
       raise IOError(o)
@@ -1345,7 +1344,7 @@ class BugBox(Provider):
           values["label"] = "default"
 
         #values["label_index"] = key
-        values["label_index"] = reference.replace("refs/tags", "refs/heads")
+        values["label_index"] = reference.replace("refs/tags/%s" % TAIL, "refs/heads")
 
         return (key, values)
 
