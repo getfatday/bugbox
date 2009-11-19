@@ -299,7 +299,7 @@
       </dd>
       <dt>Pushing changes to this ${select('@type')}</dt>
       <dd>
-        <pre>git push bugbox ${select('@ref')}</pre>
+        <pre>git push bugbox HEAD:${select('@ref')}</pre>
       </dd>
     </dl>
   </py:match>
