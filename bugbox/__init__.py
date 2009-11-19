@@ -462,8 +462,6 @@ class UnifiedDiff(object):
       else:
         values["action"] = "A"
         
-      print values
-        
       self._parsed_data[-1].update(values)
       
     if event == "index":
@@ -499,7 +497,6 @@ class UnifiedDiff(object):
           
       else:          
         values["data"] = values["data"].decode('utf-8', 'replace')
-        print values["data"]
         self._parsed_data[-1]["chunks"][-1]["lines"].append(values)
         
     
@@ -922,67 +919,57 @@ class Provider(object):
   def __getitem__(self, cls):
     return self.__provides__[cls]
   
-class CacheMethod(object):
-  
-  def __init__(self, callback):
-    self.callback = callback
-  
-  def __call__(self, *args):
-    
-    if not self._cache.has_key(args):
-      print "Caching..."
-      self._cache[args] = self.callback(*args)
-    
-    return self._cache[args]
-  
+class cache_type(type):
+
+  def __init__(cls, classname, bases, classdict):
+    super(cache_type, cls).__init__(classname, bases, classdict)
+    setattr(cls, '__cache__', {})
+
 class Cache(object):
   
-  def __init__(self, label):
-    self.label = label
-    self.clear()
-    
+  __metaclass__ = cache_type
+
+  def __init__(self, key=lambda x : x, synced=lambda x : True, sync=lambda x : None ):
+    self.key = key
+    self.synced = synced
+    self.sync = sync
+
+  @classmethod
   def clear(self):
-    self._cache = {}
-    
+    self.__cache__ = {}
+     
   def __call__(self, func):
     
-    def cache(*args):
+    def cache(*args, **kwargs):
+      
+      key = self.key(args)
+      
+      if not self.synced(args):
+        self.sync(args)
+        self.clear()
 
-      if not self._cache.has_key(args):
-        print "Caching..."
-        self._cache[args] = func(*args) 
+      if not self.__cache__.has_key(func):
+        self.__cache__[func] = {}
+
+      if not self.__cache__[func].has_key(key):
+        self.__cache__[func][key] = func(*args, **kwargs)
         
-      return self._cache[args]
+      return self.__cache__[func][key]
       
     return cache
+
+_cache = Cache(synced=lambda a : a[0].synced, sync=lambda a : a[0].sync())
+
+def cache(func):
+  return _cache(func)
     
-      
 class BugBox(Provider):
-  
-  URL_CACHE = "url"
-  SYSTEM_CACHE = "systems"
-  COMMIT_CACHE = "commits"
-  COMMIT_BY_DATE_CACHE = "commits_by_date"
-  COMMIT_BY_AUTHOR_CACHE = "commits_by_author"
-  COMMIT_BY_COMMITTER_CACHE = "commits_by_committer"
-  LABEL_CACHE = "labels"
-  TICKET_CACHE = "tickets"
-  REFERENCE_CACHE = "reference"
-  TAG_REFERENCE_CACHE = "tag_reference"
-  TAG_CACHE = "tags"
-  HAS_REFERENCE_CACHE = "has_reference"
-  HISTORY_CACHE = "history"
-  COMMIT_DIFF_CACHE = "commit_diff"
-  COMMIT_PATCH_CACHE = "commit_patch"
-  LABEL_PATCH_CACHE = "label_patch"
-  TICKET_PATCH_CACHE = "ticket_patch"
   
   def __init__(self, path):
     
     self._path = path
     self._parse_systems = None
     self._modified = None
-    self._cache = {}
     
     o, e, v = self.git("rev-parse", "--git-dir")
 
@@ -1003,25 +990,7 @@ class BugBox(Provider):
     return self.modified == self._modified
     
   def sync(self):
-    print self._modified, self.modified
     self._modified = self.modified
-    self.clear(self.URL_CACHE,
-               self.SYSTEM_CACHE,
-               self.COMMIT_CACHE,
-               self.COMMIT_BY_DATE_CACHE,
-               self.COMMIT_BY_AUTHOR_CACHE,
-               self.COMMIT_BY_COMMITTER_CACHE,
-               self.LABEL_CACHE,
-               self.TICKET_CACHE,
-               self.REFERENCE_CACHE,
-               self.TAG_REFERENCE_CACHE,
-               self.TAG_CACHE,
-               self.HAS_REFERENCE_CACHE,
-               self.HISTORY_CACHE,
-               self.COMMIT_DIFF_CACHE,
-               self.COMMIT_PATCH_CACHE,
-               self.LABEL_PATCH_CACHE,
-               self.TICKET_PATCH_CACHE)
     
   def call(self, *args, **kwargs):
     p = subprocess.Popen(args, cwd=kwargs.get("cwd", os.getcwd()), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -1032,7 +1001,6 @@ class BugBox(Provider):
 
     return (o, e, p.returncode)
 
-  #@profile
   def git(self, global_args=None, *args):
 
     cmd = ["git",]
@@ -1046,110 +1014,71 @@ class BugBox(Provider):
 
     return self.call(cwd=self._path, *cmd)
     
-  def iscached(self, key):
-    return self._cache.has_key(key)
-    
-  def clear(self, *keys):
-    
-    for key in keys:
-      if self.iscached(key):
-        del self._cache[key]
-      
-  def cache(self, key, value=None):
-    
-    if value is not None:
-      self._cache[key] = value
-      
-    return self._cache[key]
-    
   def system_keys(self):
     return self.parse_systems().keys()
     
+  @cache
   def parse_url(self):
     
-    cache = self.URL_CACHE
-    
-    if not self.synced:
-      self.sync()
-      
-    if not self.iscached(cache):
-      
-      o, e, v = self.git("config", "bugbox.url")
+    o, e, v = self.git("config", "bugbox.url")
 
-      if v != 0 or len(o.strip()) == 0:
-        self.cache(cache, self._path)
-      else:
-        self.cache(cache, o.strip())
-      
-    return self.cache(cache)
+    if v != 0 or len(o.strip()) == 0:
+      return self._path
+    else:
+      return o.strip()
     
+  @cache
   def parse_systems(self):
 
-    cache = self.SYSTEM_CACHE
+    o, e, v = self.git("var", "-l")
 
-    if not self.synced:
-      self.sync()
-      
-    if not self.iscached(cache):
-      o, e, v = self.git("var", "-l")
+    if v != 0:
+      raise IOError(e)
 
-      if v != 0:
-        raise IOError(e)
+    var = dict([l.split("=") for l in o.splitlines()])
 
-      var = dict([l.split("=") for l in o.splitlines()])
+    systems = {}
 
-      systems = {}
+    for k, v in var.items():
 
-      for k, v in var.items():
+      if k.startswith("ticket"):
+        parts = k.split(".")
+        if len(parts) > 2:
 
-        if k.startswith("ticket"):
-          parts = k.split(".")
-          if len(parts) > 2:
+          index = parts[1]
+          attr  = parts[2]
 
-            index = parts[1]
-            attr  = parts[2]
+          if not systems.has_key(index):
+            systems[index] = {}
 
-            if not systems.has_key(index):
-              systems[index] = {}
+          systems[index][attr] = v
 
-            systems[index][attr] = v
+    return systems
 
-      self.cache(cache, systems)
-
-    return self.cache(cache)
-    
+  @cache  
   def parse_commits(self):
 
-    cache = self.COMMIT_CACHE
+    label_refs = self.parse_labels().keys()
 
-    if not self.synced:
-      self.sync()
+    commits = {}
 
-    if not self.iscached(cache):
+    for ref in label_refs:
+      o, e, v = self.git("rev-list", ref)
 
-      label_refs = self.parse_labels().keys()
+      if v != 0:
+        raise IOError(o)
 
-      commits = {}
+      values = [l.strip() for l in o.splitlines()]
 
-      for ref in label_refs:
-        o, e, v = self.git("rev-list", ref)
-        
-        if v != 0:
-          raise IOError(o)
+      for v in values:
+        if not commits.has_key(v):
+          commits[v] = {
+            "labels" : []
+          }
 
-        values = [l.strip() for l in o.splitlines()]
+        commits[v]["labels"].append(ref)
 
-        for v in values:
-          if not commits.has_key(v):
-            commits[v] = {
-              "labels" : []
-            }
-
-          commits[v]["labels"].append(ref)
-
-      self.cache(cache, commits)
-
-    return self.cache(cache)
+    return commits
 
   def commit_keys(self):
     return self.parse_commits().keys()
@@ -1161,151 +1090,104 @@ class BugBox(Provider):
       
     return []
     
+  @cache
   def parse_commits_by_date(self):
     
-    cache = self.COMMIT_BY_DATE_CACHE
+    o, e, v = self.git("rev-list", "--date-order", "--all")
 
-    if not self.synced:
-      self.sync()
-      
-    if not self.iscached(cache):
-      o, e, v = self.git("rev-list", "--date-order", "--all")
+    if v != 0:
+      raise IOError(e)
 
-      if v != 0:
-        raise IOError(e)
+    return o.splitlines()
 
-      self.cache(cache, o.splitlines())
-      
-    return self.cache(cache)
-    
   def commit_keys_by_date(self):
     return self.parse_commits_by_date()
     
+  @cache
   def parse_commit_keys_by_author(self, key):
     
-    cache = self.COMMIT_BY_AUTHOR_CACHE
+    o, e, v = self.git("rev-list", "--date-order", "--author=%s" % key,"--all")
 
-    if not self.synced:
-      self.sync()
-      
-    if not self.iscached(cache):
-      self.cache(cache, {})
-      
-    if not self.cache(cache).has_key(key):
-      o, e, v = self.git("rev-list", "--date-order", "--author=%s" % key,"--all")
+    if v != 0:
+      raise IOError(e)
 
-      if v != 0:
-        raise IOError(e)
-  
-      data = self.cache(cache)
-      data[key] = o.splitlines()
-      self.cache(cache, data)
-    
-    return self.cache(cache)[key]
+    return o.splitlines()
    
   def commit_keys_by_author(self, key):
     return self.parse_commit_keys_by_author(key)
 
+  @cache
   def parse_commit_keys_by_committer(self, key):
 
-    cache = self.COMMIT_BY_COMMITTER_CACHE
+    o, e, v = self.git("rev-list", "--date-order", "--committer=%s" % key,"--all")
 
-    if not self.synced:
-      self.sync()
+    if v != 0:
+      raise IOError(e)
 
-    if not self.iscached(cache):
-      self.cache(cache, {})
-
-    if not self.cache(cache).has_key(key):
-      o, e, v = self.git("rev-list", "--date-order", "--committer=%s" % key,"--all")
-
-      if v != 0:
-        raise IOError(e)
-
-      data = self.cache(cache)
-      data[key] = o.splitlines()
-      self.cache(cache, data)
-
-    return self.cache(cache)[key]
+    return o.splitlines()
 
   def commit_keys_by_committer(self, key):
     return self.parse_commit_keys_by_committer(key)
-    
+
+  @cache
   def parse_labels(self):
     
-    cache = self.LABEL_CACHE
-    
-    if not self.synced:
-      self.sync()
-      
-    if not self.iscached(cache):
-      
-      tickets = self.parse_tickets()
-    
-      refs = {}
-    
-      for k, v in tickets.items():
-        for lk, lv in v["labels"].items():
-          refs[lk] = {
-            "name" : lv["name"],
-            "head" : lv["head"],
-            "tail" : lv["tail"],
-            "ticket" : k
-          }
+    tickets = self.parse_tickets()
 
-      self.cache(cache, refs)
-    
-    return self.cache(cache)
+    refs = {}
+
+    for k, v in tickets.items():
+      for lk, lv in v["labels"].items():
+        refs[lk] = {
+          "name" : lv["name"],
+          "head" : lv["head"],
+          "tail" : lv["tail"],
+          "ticket" : k
+        }
+
+    return refs
     
   def label_keys(self):
     return self.parse_labels().keys()
-    
+
+  @cache
   def parse_tickets(self):
 
-    cache = self.TICKET_CACHE
-    
-    if not self.synced:
-      self.sync()
-      
-    if not self.iscached(cache):
+    o, e, v = self.git("for-each-ref", '--format=%(refname) %(objecttype) %(objectname)')
 
-      o, e, v = self.git("for-each-ref", '--format=%(refname) %(objecttype) %(objectname)')
+    if v != 0:
+      raise IOError(o)
 
-      if v != 0:
-        raise IOError(o)
+    refs = [l.strip().split(" ") for l in o.splitlines()]
 
-      refs = [l.strip().split(" ") for l in o.splitlines()]
+    tickets = {}
 
-      tickets = {}
+    for r, t, h in refs:
 
-      for r, t, h in refs:
-        
-        if t == "commit":
-          index, values = self.parse_ref(r)
+      if t == "commit":
+        index, values = self.parse_ref(r)
 
-          if index:
-            if not tickets.has_key(index):
-              tickets[index] = {}
-              tickets[index]["labels"] = {}
+        if index:
+          if not tickets.has_key(index):
+            tickets[index] = {}
+            tickets[index]["labels"] = {}
 
-            tickets[index]["system"] = values["system"]
-            tickets[index]["number"] = values["number"]
-            tickets[index]["labels"][values["label_index"]] = {
-              "name" : values["label"],
-              "head" : h,
-              "tail" : None}
-              
-      for r, t, h in refs:
+          tickets[index]["system"] = values["system"]
+          tickets[index]["number"] = values["number"]
+          tickets[index]["labels"][values["label_index"]] = {
+            "name" : values["label"],
+            "head" : h,
+            "tail" : None}
 
-        if t == "tag":
-          index, values = self.parse_ref(r, tag=True)
-          
-          if tickets.has_key(index):
-            tickets[index]["labels"][values["label_index"]]["tail"] = self.parse_tag(r)["head"]
+    for r, t, h in refs:
 
-      self.cache(cache, tickets)
-    
-    return self.cache(cache)
+      if t == "tag":
+        index, values = self.parse_ref(r, tag=True)
+
+        if tickets.has_key(index):
+          tickets[index]["labels"][values["label_index"]]["tail"] = self.parse_tag(r)["head"]
+
+    return tickets
     
   def set_tail(self, reference, revision):
     
@@ -1319,49 +1201,27 @@ class BugBox(Provider):
     
     if v != 0:
       raise IOError(o)
-    
+  
+  @cache
   def has_ref(self, reference):
-    
-    cache = self.HAS_REFERENCE_CACHE
-    
-    if not self.synced:
-      self.sync()
-    
-    if not self.iscached(cache):
-      self.cache(cache, {})
 
-    if not self.cache(cache).has_key(reference):
+    o, e, v = self.git("show-ref", "--verify", "--quiet", reference)
+    return v == 0
 
-      o, e, v = self.git("show-ref", "--verify", "--quiet", reference)
-      self.cache(cache)[reference] = v == 0
-      
-    return self.cache(cache)[reference]
-      
+  @cache
   def parse_tag(self, reference):
-    
-    cache = self.TAG_CACHE
-    
-    if not self.synced:
-      self.sync()
       
-    if not self.iscached(cache):
-      self.cache(cache, {})
+    o, e, v = self.git("rev-list", '--max-count=1', reference)
 
-    if not self.cache(cache).has_key(reference):
-      
-      o, e, v = self.git("rev-list", '--max-count=1', reference)
+    if v != 0:
+      raise IOError(e)
 
-      if v != 0:
-        raise IOError(e)
+    head = o.strip()
 
-      head = o.strip()
-      
-      self.cache(cache)[reference] = {
-        "head" : o.strip(),
-        "reference" : reference
-      }
-
-    return self.cache(cache)[reference]
+    return {
+      "head" : o.strip(),
+      "reference" : reference
+    }
     
   def splitref(self, reference, mapped=False):
     m = REF_PATTERN.match(reference)
@@ -1377,60 +1237,31 @@ class BugBox(Provider):
         return None
       else:
         return (None, None, None)
-      
-  def commit_diff(self, revision):
-    
-    cache = self.COMMIT_DIFF_CACHE
-    
-    if not self.synced:
-      self.sync()
-      
-    if not self.iscached(cache):
-      self.cache(cache, {})
-      
-    if not self.cache(cache).has_key(revision):
-      
-      o, e, v = self.git("diff-tree", "-r", "-p", "--full-index", revision)
-      
-      if v != 0:
-        raise IOError(e)
 
-      self.cache(cache)[revision] = o.splitlines()
+  @cache
+  def commit_diff(self, revision):
       
-    return self.cache(cache)[revision]
-   
+    o, e, v = self.git("diff-tree", "-r", "-p", "--full-index", revision)
+
+    if v != 0:
+      raise IOError(e)
+
+    return o.splitlines()
+
+  @cache
   def commit_patch(self, revision):
 
-    cache = self.COMMIT_PATCH_CACHE
+    o, e, v = self.git("diff-tree", "-r", "-p", "--binary", "--full-index", revision)
 
-    if not self.synced:
-      self.sync()
+    if v != 0:
+      raise IOError(e)
 
-    if not self.iscached(cache):
-      self.cache(cache, {})
+    return o
 
-    if not self.cache(cache).has_key(revision):
-
-      o, e, v = self.git("diff-tree", "-r", "-p", "--binary", "--full-index", revision)
-
-      if v != 0:
-        raise IOError(e)
-
-      self.cache(cache)[revision] = o
-
-    return self.cache(cache)[revision]
-
+  @cache
   def ticket_patch(self, index):
 
-    cache = self.TICKET_PATCH_CACHE
-
-    if not self.synced:
-      self.sync()
-
-    if not self.iscached(cache):
-      self.cache(cache, {})
-
-    if self.tickets.has_key(index) and ( not self.cache(cache).has_key(index) or not os.path.isfile(self.cache(cache)[index]) ):
+    if self.tickets.has_key(index):
 
       z = tempfile.mkstemp()[-1]
       zf = ZipFile(z, mode="w")
@@ -1452,107 +1283,66 @@ class BugBox(Provider):
       
       zf.close()
       
-      self.cache(cache)[index] = z
+      return z
 
-    return self.cache(cache)[index]
-
+  @cache
   def label_patch(self, length, revision):
-
-    cache = self.LABEL_PATCH_CACHE
-
-    if not self.synced:
-      self.sync()
-
-    if not self.iscached(cache):
-      self.cache(cache, {})
-
-    if not self.cache(cache).has_key((length, revision)) or not os.path.isfile(self.cache(cache)[(length, revision)]):
       
-      p = tempfile.mkdtemp()
-      
-      o, e, v = self.git("format-patch", "-o", p, "-k", "-%s" % length, revision)
+    p = tempfile.mkdtemp()
 
-      if v != 0:
-        raise IOError(e)
-        
-      # TODO Hook into cherrypy on shutdown to remove temp files
-      z = tempfile.mkstemp()[-1]
-      zf = ZipFile(z, mode="w")
-      
-      for f in o.splitlines():
-        fp = f.strip()
-        zf.write(fp, os.path.basename(fp))
-        
-      zf.close()
-      
-      self.cache(cache)[(length, revision)] = z
+    o, e, v = self.git("format-patch", "-o", p, "-k", "-%s" % length, revision)
 
-    return self.cache(cache)[(length, revision)]
-    
+    if v != 0:
+      raise IOError(e)
+
+    # TODO Hook into cherrypy on shutdown to remove temp files
+    z = tempfile.mkstemp()[-1]
+    zf = ZipFile(z, mode="w")
+
+    for f in o.splitlines():
+      fp = f.strip()
+      zf.write(fp, os.path.basename(fp))
+
+    zf.close()
+
+    return z
+
+  @cache
   def parse_history(self, head, tail):
     
-    cache = self.HISTORY_CACHE
-    
-    if not self.synced:
-      self.sync()
-      
-    if not self.iscached(cache):
-      self.cache(cache, {})
-
     if head == tail:
       return [head,]
 
-    if not self.cache(cache).has_key((head, tail)):
-      
-      o, e, v = self.git("rev-list", '%s..%s' % (tail, head))
+    o, e, v = self.git("rev-list", '%s..%s' % (tail, head))
 
-      if v != 0:
-        raise IOError(e)
+    if v != 0:
+      raise IOError(e)
 
-      self.cache(cache)[(head, tail)] = [l.strip() for l in o.splitlines()] + [tail,]
-
-    return self.cache(cache)[(head, tail)]
+    return [l.strip() for l in o.splitlines()] + [tail,]
     
+  @cache
   def parse_ref(self, reference, tag=False):
 
-    if tag:
-      cache = self.TAG_REFERENCE_CACHE
-    else:
-      cache = self.REFERENCE_CACHE
-    
-    if not self.synced:
-      self.sync()
-      
-    if not self.iscached(cache):
-      self.cache(cache, {})
+    m = REF_PATTERN.match(reference)
 
-    if not self.cache(cache).has_key(reference):
+    systems = self.parse_systems().keys()
 
-      m = REF_PATTERN.match(reference)
+    if m:
 
-      systems = self.parse_systems().keys()
+      values = m.groupdict()
 
-      if m:
+      if values["system"] in systems:
+        key = "%(system)s/%(number)s" % values
 
-        values = m.groupdict()
+        if values["label"] == None:
+          values["label"] = "default"
 
-        if values["system"] in systems:
-          key = "%(system)s/%(number)s" % values
+        #values["label_index"] = key
+        values["label_index"] = reference.replace("refs/tags", "refs/heads")
 
-          if values["label"] == None:
-            values["label"] = "default"
+        return (key, values)
 
-          #values["label_index"] = key
-          values["label_index"] = reference.replace("refs/tags", "refs/heads")
-          
-
-          self.cache(cache)[reference] = (key, values)
-        else:
-          self.cache(cache)[reference] = (None, None)
-      else:
-        self.cache(cache)[reference] = (None, None)
-
-    return self.cache(cache)[reference]
+      return  (None, None)
     
   @Cache("test")
   def test(self, value):
