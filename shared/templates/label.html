@@ -9,20 +9,22 @@
   <body>
     <o:label-title />
     
-    <o:list title="Latest Change" class="two left second" py:if="len(label.head.diff.files) > 0" py:with="diff=label.head.diff; commit=label.head">
+    <o:list title="Latest Change" class="two left second" py:with="diff=label.head.diff; commit=label.head">
       <ul>
         <li><o:commit-message /></li>
         <li><o:unified-diff  /></li>
       </ul>
     </o:list>
 
-    <o:list title="Details" class="one right">
+    <div class="one right">
+    <o:list title="Details" class="one">
       <o:label-details />
     </o:list>
 
-    <o:list py:with="commits=label.commit_history_values()" title="History" class="one right">
+    <o:list py:with="commits=label.commit_history_values()" title="History" class="one">
       <o:commit-list link="true" body="false" />
     </o:list>
+    </div>
 
   </body>
 </html>

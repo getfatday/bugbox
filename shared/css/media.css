@@ -103,6 +103,8 @@ html, body {
 .left { float: left; }
 .right { float: right; }
 
+.right .clear { clear: left; }
+
 .gutter.right { margin-left: 18px; }
 .gutter.left { margin-right: 18px; }
 
