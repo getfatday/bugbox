@@ -70,7 +70,7 @@
         <div class="system left gutter" />
         <div class="left">
           <h2><a href="${url('/tickets/%s' % system.id)}">${system.name}</a></h2>
-          <a href="${system.url}">${system.url}</a>
+	  ${len(system.ticket_keys())} ticket<py:if test="len(system.ticket_keys()) != 1">s</py:if>
         </div>
         <div class="clear" />
       </li>
