@@ -983,7 +983,14 @@ class BugBox(Provider):
     
   @property
   def modified(self):
-    return os.stat(os.path.join(self._path, "objects"))[stat.ST_MTIME]
+    
+    config = os.stat(os.path.join(self._path, "config"))[stat.ST_MTIME]
+    objects = os.stat(os.path.join(self._path, "objects"))[stat.ST_MTIME]
+
+    if config > objects:
+      return config
+
+    return objects
     
   @property
   def synced(self):
