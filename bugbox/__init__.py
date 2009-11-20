@@ -402,6 +402,7 @@ class UnifiedDiff(object):
   BINARY = re.compile(r"^(?P<format>Binary) files .*$")
   COMMIT = re.compile(r"^(?P<commit>[a-z0-9]{40})$")
   CHUNK = re.compile(r"^@@ -(?P<left_start>[0-9]+),(?P<left_len>[0-9]+) \+(?P<right_start>[0-9]+),(?P<right_len>[0-9]+) @@$")
+  SPAN = re.compile(r"^@@ -(?P<left_start>[0-9]+) \+(?P<right_start>[0-9]+) @@$")
   LINE = re.compile(r"^(?P<event>\+|-| |@@ .* @@)(?P<data>.*$|$)")
   FILE = re.compile(r"^(\+\+\+|---) .*$")
   
@@ -486,11 +487,22 @@ class UnifiedDiff(object):
       
       values["lines"] = []
       self._parsed_data[-1]["chunks"].append(values)
+
+    if event == "span":
+      
+      for k in values.keys():
+        values[k] = int(values[k])
+
+      values["lines"] = []
+      values["left_len"] = 1
+      values["right_len"] = 1
+      self._parsed_data[-1]["chunks"].append(values)
       
     if event == "line":
       # Check if new range has been specified
       if values["event"] not in "+- ":
-        if self._event("chunk", self.CHUNK, values["event"]):
+        if self._event("chunk", self.CHUNK, values["event"]) or \
+           self._event("span", self.SPAN, values["event"]):
           if len(values["data"]) > 0:
             return self._event("line", self.LINE, values["data"])
         else:
@@ -527,7 +539,7 @@ class UnifiedDiff(object):
       
       first_event = event
       reset = False
-      
+
       while stack and not self._event(event, pattern, data[0]):
         stack = stack[1:]
         
@@ -989,6 +1001,7 @@ class BugBox(Provider):
     
   @property
   def modified(self):
+    # print datetime.fromtimestamp(max(*[os.stat(p)[stat.ST_MTIME] for p in self._paths])), [str(datetime.fromtimestamp(os.stat(p)[stat.ST_MTIME])) for p in self._paths]
     return max(*[os.stat(p)[stat.ST_MTIME] for p in self._paths])
     
   @property

@@ -10,7 +10,7 @@ import os
 import sys
 
 from bugbox.shell import Command, TreeCommand
-from bugbox import debug, BugBox
+from bugbox import debug, BugBox, TAIL
 
 class Hook(TreeCommand):
 
@@ -115,7 +115,7 @@ Please use one of the following:
           self.error(hook, code=v, usage=False)
 
     #Set tail if one does not exist
-    tag_ref = refname.replace("refs/heads", "refs/tags")
+    tag_ref = refname.replace("refs/heads", "refs/tags/%s" % TAIL)
     
     if not bbox.has_ref(tag_ref):
       bbox.set_tail(refname, newrev)
