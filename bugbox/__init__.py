@@ -114,11 +114,10 @@ class Record(object):
   def __init__(self, provider):
     self._index = None
     self._provider = provider
-    self._modified = None
     
   @property
   def synced(self):
-    return self._provider.modified == self._modified
+    return self._provider.synced
     
   @property
   def provider(self):
@@ -160,15 +159,10 @@ class Record(object):
       return self.root.__instances__[key]
 
     obj = self.obtain(key)
-    obj.sync()
-
     return obj
 
   def sync(self):
-    if not self._provider.synced:
-       self._provider.sync()
-
-    self._modified = self._provider.modified
+    self._provider.sync()
 
   def has_key(self, key):
     return self.root.__instances__.has_key(key)
