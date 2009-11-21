@@ -123,7 +123,13 @@ Please use one of the following:
     #Touch the .bugbox file for modification time updates. 
     #Saves us from searching the refs directory
     stamp = os.path.join(bbox.path, STAMP)
-    with file(stamp, 'a'):
+
+    f = file(stamp, 'a')
+      
+    try:
       os.utime(stamp, None)
+    finally:
+      f.close()
+
         
         

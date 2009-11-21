@@ -878,8 +878,12 @@ class BugBox(Provider):
     #Make time stamp for syncing
     stamp =  os.path.join(self._path, STAMP)
     if not os.path.exists(stamp):
-      with file(stamp, 'a'):
+      f = file(stamp, 'a')
+      
+      try:
         os.utime(stamp, None)
+      finally:
+        f.close()
 
     self._paths = [
       os.path.join(self._path, "config"),
