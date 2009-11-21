@@ -10,7 +10,7 @@ import os
 import sys
 
 from bugbox.shell import Command, TreeCommand
-from bugbox import debug, BugBox, TAIL
+from bugbox import debug, BugBox, TAIL, STAMP
 
 class Hook(TreeCommand):
 
@@ -119,5 +119,11 @@ Please use one of the following:
     
     if not bbox.has_ref(tag_ref):
       bbox.set_tail(refname, newrev)
+
+    #Touch the .bugbox file for modification time updates. 
+    #Saves us from searching the refs directory
+    stamp = os.path.join(bbox.path, STAMP)
+    with file(stamp, 'a'):
+      os.utime(stamp, None)
         
         

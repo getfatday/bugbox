@@ -11,6 +11,7 @@ from datetime import tzinfo, timedelta, datetime
 from email.utils import parsedate
 from zipfile import ZipFile
 
+STAMP = ".bugbox"
 TAIL = "tails"
 REF_PATTERN = re.compile(r"refs/(heads|tags/%s)/(?P<system>[^/]*)/(?P<number>[^/]*)(/(?P<label>.*))?" % TAIL)
 
@@ -30,6 +31,75 @@ def profile(func):
 
     return newfunc
 
+def pprint(l):
+  
+  if type(l) in (list, tuple):
+    return " ".join([pprint(v) for v in l])
+  if type(l) == dict:
+    return " ".join(["%s=%s" % (pprint(k), pprint(v)) for k, v in l.items()])
+  
+  return str(l)
+
+def log(func):
+    def logging(*args, **kwargs):
+      logger(func.__name__.upper(), args[1:], kwargs)
+      return func(*args, **kwargs)
+
+    return logging
+
+if os.environ.has_key("BUGBOX_DEBUG") and os.environ["BUGBOX_DEBUG"].lower() in ("1", "yes", "y", "true"):
+  def logger(*msg):
+    cherrypy.log(pprint(msg))
+
+else:
+  def logger(*msg):
+    pass
+
+class cache_type(type):
+
+  def __init__(cls, classname, bases, classdict):
+    super(cache_type, cls).__init__(classname, bases, classdict)
+    setattr(cls, '__cache__', {})
+
+class Cache(object):
+  
+  __metaclass__ = cache_type
+
+  def __init__(self, key=lambda x : x, synced=lambda x : True, sync=lambda x : None ):
+    self.key = key
+    self.synced = synced
+    self.sync = sync
+
+  @log
+  def clear(self):
+    self.__cache__ = {}
+     
+  def __call__(self, func):
+    
+    def cache(*args, **kwargs):
+      
+      key = self.key(args)
+      
+      if not self.synced(args):
+        self.sync(args)
+        self.clear()
+
+      if not self.__cache__.has_key(func):
+        self.__cache__[func] = {}
+
+      if not self.__cache__[func].has_key(key):
+        logger("CACHING", func, args, kwargs)
+        self.__cache__[func][key] = func(*args, **kwargs)
+        
+      return self.__cache__[func][key]
+      
+    return cache
+
+_cache = Cache(synced=lambda a : a[0].synced, sync=lambda a : a[0].sync())
+
+def cache(func):
+  return _cache(func)
+
 class record_type(type):
 
   def __init__(cls, classname, bases, classdict):
@@ -44,12 +114,11 @@ class Record(object):
   def __init__(self, provider):
     self._index = None
     self._provider = provider
-      
-    self._key_cache = []
+    self._modified = None
     
   @property
   def synced(self):
-    return self._provider.modified != self._modified
+    return self._provider.modified == self._modified
     
   @property
   def provider(self):
@@ -96,6 +165,9 @@ class Record(object):
     return obj
 
   def sync(self):
+    if not self._provider.synced:
+       self._provider.sync()
+
     self._modified = self._provider.modified
 
   def has_key(self, key):
@@ -108,10 +180,6 @@ class System(Record):
   
   def __init__(self, provider):
     Record.__init__(self, provider)
-    self._name = None
-    self._url  = None
-    self._tickets = None
-    self._parse_systems = {}
 
   def has_key(self, key):
     return Record.has_key(self, key) or \
@@ -119,28 +187,22 @@ class System(Record):
 
   def keys(self):
     return self.provider.system_keys()
-    
-  def sync(self):
-    for k, v in self.provider.parse_systems()[self.id].items():
-      if hasattr(self, "_%s" % k):
-        setattr(self, "_%s" % k, v)
-        
-    Record.sync(self)
 
   @property
   def name(self):
-    return self._name
+    return self.provider.parse_systems()[self.id]["name"]
     
   @property
   def url(self):
-    return self._url
+    return self.provider.parse_systems()[self.id]["url"]
     
+  @cache
   def ticket_keys(self):
     return [k for k, v in self.provider.parse_tickets().items() if v["system"] == self.id]
     
   @property
-  def tickets(self):
-    
+  @cache
+  def tickets(self):    
     return dict([(k, Ticket(self._provider)[k]) for k in self.ticket_keys()])
 
 
@@ -148,13 +210,7 @@ class Author(Record):
   
   def __init__(self, provider):
     Record.__init__(self, provider)
-    self._name = None
     self._noname = False
-    self._digest = None
-    self._tickets = None
-    self._authored = {}
-    self._committed = {}
-    self._labels = None
 
   def has_key(self, key):
     
@@ -163,70 +219,78 @@ class Author(Record):
            len(self.provider.commit_keys_by_committer(key)) > 0
 
   @property
+  @cache
   def name(self):
     
-    if self._name == None and not self._noname:
-      
+    name = None
+
+    if not self._noname:
+
       for k in self.provider.commit_keys_by_author(self.id):
         c = Commit(self._provider)[k]
         if c.author.name != None:
-          self._name = c.author.name
+          name = c.author.name
           break
     
-      if self._name == None:
+      if name == None:
         for k in self.provider.commit_keys_by_committer(self.id):
           c = Commit(self._provider)[k]
           if c.committer.name != None:
-            self._name = c.committer.name
+            name = c.committer.name
             break
       
-      if self._name == None:
+      if name == None:
         self._noname = True
       
-    return self._name
+    return name
     
   @property
   def email(self):
     return self.id
     
   @property
+  @cache
   def digest(self):
-    if self._digest is None:
-      self._digest = hashlib.md5(self.id).hexdigest()
-      
-    return self._digest
+    return hashlib.md5(self.id).hexdigest()
 
   @property
+  @cache
   def commits(self):
     return [Commit(self._provider)[key] for key in self.provider.commit_keys_by_committer(self.id)]
 
   @property
+  @cache
   def authored(self):
     return [Commit(self._provider)[key] for key in self.provider.commit_keys_by_author(self.id)]
 
+  def sync(self):
+    self._noname = False
+    Record.sync(self)
+
   @property
+  @cache
   def labels(self):
-    if self._labels == None:
-      self._labels = {}
 
-      for c in self.commits:
-        for l in c.labels:
-          if not self._labels.has_key(l.id):
-            self._labels[l.id] = l
+    labels = {}
 
-    return self._labels
+    for c in self.commits:
+      for l in c.labels:
+        if not labels.has_key(l.id):
+          labels[l.id] = l
+
+    return labels
 
   @property
+  @cache
   def tickets(self):
     
-    if self._tickets == None:
-      self._tickets = {}
-      
-      for l in self.labels.values():
-        if not self._tickets.has_key(l.ticket.id):
-          self._tickets[l.ticket.id] = l.ticket
+    tickets = {}
 
-    return  self._tickets
+    for l in self.labels.values():
+      if not tickets.has_key(l.ticket.id):
+        tickets[l.ticket.id] = l.ticket
+
+    return tickets
 
 
 class TZ(tzinfo):
@@ -401,8 +465,7 @@ class UnifiedDiff(object):
   ACTION = re.compile(r"^(?P<action>deleted|old|new)( file)? mode (?P<mode>.*)$")
   BINARY = re.compile(r"^(?P<format>Binary) files .*$")
   COMMIT = re.compile(r"^(?P<commit>[a-z0-9]{40})$")
-  CHUNK = re.compile(r"^@@ -(?P<left_start>[0-9]+),(?P<left_len>[0-9]+) \+(?P<right_start>[0-9]+),(?P<right_len>[0-9]+) @@$")
-  SPAN = re.compile(r"^@@ -(?P<left_start>[0-9]+) \+(?P<right_start>[0-9]+) @@$")
+  CHUNK = re.compile(r"^@@ -(?P<left_start>[0-9]+)(,(?P<left_len>[0-9]+))? \+(?P<right_start>[0-9]+)(,(?P<right_len>[0-9]+))? @@$")
   LINE = re.compile(r"^(?P<event>\+|-| |@@ .* @@)(?P<data>.*$|$)")
   FILE = re.compile(r"^(\+\+\+|---) .*$")
   
@@ -481,28 +544,24 @@ class UnifiedDiff(object):
       self._parsed_data[-1]["format"] = values["format"].lower()
       
     if event == "chunk":
-      
+
+      if not values.has_key("left_len") or values["left_len"] == None:
+        values["left_len"] = values["left_start"]
+
+      if not values.has_key("right_len") or values["right_len"] == None:
+        values["right_len"] = values["right_start"]
+
       for k in values.keys():
         values[k] = int(values[k])
       
       values["lines"] = []
-      self._parsed_data[-1]["chunks"].append(values)
-
-    if event == "span":
-      
-      for k in values.keys():
-        values[k] = int(values[k])
-
-      values["lines"] = []
-      values["left_len"] = 1
-      values["right_len"] = 1
+        
       self._parsed_data[-1]["chunks"].append(values)
       
     if event == "line":
       # Check if new range has been specified
       if values["event"] not in "+- ":
-        if self._event("chunk", self.CHUNK, values["event"]) or \
-           self._event("span", self.SPAN, values["event"]):
+        if self._event("chunk", self.CHUNK, values["event"]):
           if len(values["data"]) > 0:
             return self._event("line", self.LINE, values["data"])
         else:
@@ -566,85 +625,67 @@ class Commit(Record):
   LINE = re.compile(r"^    (?P<data>\w.*)$")
   SPLIT = re.compile(r"^    $")
   
-  def __init__(self, provider):
-    Record.__init__(self, provider)
-    self._subject    = ""
-    self._body       = ""
-    self._author     = None
-    self._committer  = None
-    self._parent     = None
-    self._parent_index = []
-    self._tree        = None
-    self._tree_index = []
-    self._label_index = []
-    self._tickets    = None
-    self._labels     = None
-    self._digest     = None
-    self._isparsed   = False
-    self._parse_commits = None
-    self._keys_by_date = None
-    self._keys_by_author = None
-    self._keys_by_committer = None
-    self._diff = None
-    self._patch = None
-
   @property
+  @cache
   def diff(self):
-    
-    if self._diff == None:
-      self._diff = UnifiedDiff(self.provider.commit_diff(self.id))
-      
-    return self._diff
+    return UnifiedDiff(self.provider.commit_diff(self.id))
     
   @property
+  @cache
   def patch(self):
-    if self._patch == None:
-      self._patch = self.provider.commit_patch(self.id)
-      
-    return self._patch
+    return self.provider.commit_patch(self.id)
     
   def has_key(self, key):
-
     return Record.has_key(self, key) or \
            key in self.keys()
 
   def keys(self):
     return self.provider.commit_keys()
     
+  @cache
   def parse_commit(self):
-    if not self._isparsed:
-      self._isparsed = True
       
-      o, e, v = self._provider.git("rev-list", "--parents", "--header", "--max-count=1", self.id)
+    o, e, v = self._provider.git("rev-list", "--parents", "--header", "--max-count=1", self.id)
 
-      if v != 0:
-        raise IOError(e)
-        
-      patterns = [
-        (self.TREE,     lambda index, **kwargs  : ("tree", index)),
-        (self.PARENT,   lambda index, **kwargs  : ("parent", index)),
-        (self.AUTHOR,   lambda **kwargs         : ("author", UserStamp(commit=self, **kwargs))),
-        (self.COMMITTER, lambda **kwargs         : ("committer", UserStamp(commit=self, **kwargs))),
-        (self.BODY,    lambda **kwargs         : (None, None)),
-        (self.LINE,     lambda data, **kwargs   : ("subject", data)),
-        (self.SPLIT,    lambda **kwargs         : (None, None)),
-        (self.LINE,     lambda data, **kwargs   : ("body", data))
-      ]
+    if v != 0:
+      raise IOError(e)
 
-      p, f = patterns[0]
+    commit = {
+      "tree" : [],
+      "parent" : [],
+      "author" : None,
+      "committer" : None,
+      "subject" : "",
+      "body" : ""
+      }
 
-      lines = o.splitlines()[1:]
+    patterns = [
+      (self.TREE,     lambda index, **kwargs  : ("tree", index)),
+      (self.PARENT,   lambda index, **kwargs  : ("parent", index)),
+      (self.AUTHOR,   lambda **kwargs         : ("author", UserStamp(commit=self, **kwargs))),
+      (self.COMMITTER, lambda **kwargs         : ("committer", UserStamp(commit=self, **kwargs))),
+      (self.BODY,    lambda **kwargs         : (None, None)),
+      (self.LINE,     lambda data, **kwargs   : ("subject", data)),
+      (self.SPLIT,    lambda **kwargs         : (None, None)),
+      (self.LINE,     lambda data, **kwargs   : ("body", data))
+    ]
 
-      while lines:
-        data = lines[0]
-        
-        # Attempt to parse data, if parse fails pop parser and try next
-        while patterns and not self.parse_data(p, f, data):
-          patterns = patterns[1:]
-          if patterns:
-            p, f = patterns[0]
-          
-        lines = lines[1:]
+    p, f = patterns[0]
+
+    lines = o.splitlines()[1:]
+
+    while lines:
+      data = lines[0]
+
+      # Attempt to parse data, if parse fails pop parser and try next
+      while patterns and not self.parse_data(p, f, data, commit):
+        patterns = patterns[1:]
+        if patterns:
+          p, f = patterns[0]
+
+      lines = lines[1:]
+
+    return commit
 
   @property
   def remote_url(self):
@@ -654,32 +695,25 @@ class Commit(Record):
   def path(self):
     return self.provider._path
   
-  def parse_data(self, pattern, func, data):
+  def parse_data(self, pattern, func, data, commit):
     
     m = pattern.match(data)
     
     if m:
       target, data = func(**m.groupdict())
       
-      if target == "tree":
-        self._tree_index.append(data)
-      elif target == "parent":
-        self._parent_index.append(data)
-      elif target == "author":
-        self._author = data
-      elif target == "committer":
-        self._committer = data
-      elif target == "subject":
-        self._subject += data + os.linesep
-      elif target == "body":
-        self._body += data + os.linesep
-        
+      if target in ("tree", "parent"):
+        commit[target].append(data)
+      elif target in ("author", "committer"):
+        commit[target] = data
+      elif target in ("subject", "body"):
+        commit[target] += data + os.linesep
       return True
-    
       
     return False
   
   @property
+  @cache
   def labels(self):      
     return [Label(self._provider)[index] for index in self.provider.label_keys_by_commit(self.id)]
   
@@ -689,66 +723,48 @@ class Commit(Record):
 
   @property
   def subject(self):
-    self.parse_commit()
-    return self._subject
+    return self.parse_commit()["subject"]
   
   @property
   def body(self):
-    self.parse_commit()
-    return self._body
+    return self.parse_commit()["body"]
   
   @property
   def author(self):
-    self.parse_commit()
-    return self._author
+    return self.parse_commit()["author"]
 
   @property
   def committer(self):
-    self.parse_commit()
-    return self._committer
+    return self.parse_commit()["committer"]
   
   def keys_by_date(self):
     return self.provider.commit_keys_by_date()
   
+  @cache
   def values_by_date(self):
     return [self[k] for k in self.keys_by_date()]
 
   def keys_by_author(self, key):
     return self.provider.commit_keys_by_author(key)
   
+  @cache
   def values_by_author(self, key):
     return [self[k] for k in self.keys_by_author(key)]
 
   def keys_by_committer(self, pattern):
     return self.provider.commit_keys_by_committer(key)
 
+  @cache
   def values_by_committer(self, pattern):
     return [self[k] for k in self.keys_by_committer(key)]
   
   @property
+  @cache
   def parents(self):
-    
-    if not self._parent:
-      self.parse_commit()
-      self._parent = [ self[index] for index in self._parent_index ]
-      
-    return self._parent
-    
-  
+    return [ self[index] for index in self.parse_commit()["parent"] ]
 
 class Label(Record):
   
-  def __init__(self, provider):
-    Record.__init__(self, provider)
-    self._ticket_index   = None
-    self._ticket   = None
-    self._head_index = None
-    self._tail_index = None
-    self._name     = None
-    self._parse_labels = None
-    self._parse_head = None
-    self._patch = None
-      
   def has_key(self, key):
 
     return Record.has_key(self, key) or \
@@ -757,18 +773,8 @@ class Label(Record):
   def keys(self):
     return self.provider.label_keys()
 
-  def sync(self): 
-
-    values = self.provider.parse_labels()[self.id]
-
-    self._ticket_index = values["ticket"]
-    self._name = values["name"]
-    self._head_index = values["head"]
-    self._tail_index = values["tail"]
-    
-    Record.sync(self)
-
   @property
+  @cache
   def patch(self):
     
     if self.tail and self.tail.id != self.head.id:
@@ -781,50 +787,32 @@ class Label(Record):
     return d
 
   @property
-  def ticket(self):
-    
-    if self._ticket == None:
-      self._ticket = Ticket(self._provider)[self._ticket_index]
-      
-    return self._ticket
+  @cache
+  def ticket(self):    
+    return Ticket(self._provider)[self.provider.parse_labels()[self.id]["ticket"]]
+
 
   def commit_history_keys(self):
-    return self.provider.parse_history(self._head_index, self._tail_index)
+    return self.provider.parse_history(self.provider.parse_labels()[self.id]["head"], self.provider.parse_labels()[self.id]["tail"])
 
+  @cache
   def commit_history_values(self):
     return [Commit(self.provider)[k] for k in self.commit_history_keys()]
 
   @property
   def head(self):
-    return Commit(self.provider)[self._head_index]
+    return Commit(self.provider)[self.provider.parse_labels()[self.id]["head"]]
 
   @property
   def tail(self):
-    return Commit(self.provider)[self._tail_index]
+    return Commit(self.provider)[self.provider.parse_labels()[self.id]["tail"]]
 
   @property
   def name(self):
-    return self._name
+    return self.provider.parse_labels()[self.id]["name"]
     
 class Ticket(Record):
   
-  def __init__(self, provider):
-    Record.__init__(self, provider)
-    self._system = None
-    self._system_index = None
-    self._labels = None
-    self._authors = None
-    self._reference = None
-    
-    self._number = None
-    self._parsed = False
-    self._date = None
-    self._subject = None
-    self._body = None
-    self._author = None
-    self._parse_tickets = None
-    self._parse_ref = None
-
   def has_key(self, key):
 
     return Record.has_key(self, key) or \
@@ -832,77 +820,26 @@ class Ticket(Record):
 
   def keys(self):
     return self.provider.parse_tickets().keys()
-
-  @classmethod
-  def parse_ref(cls, reference, provider):
-    
-    root = provider[cls]
-    
-    if root._parse_ref == None or not root.synced:
-      root.sync()
-      
-    if not root._parse_ref.has_key(reference):
-    
-      m = REF_PATTERN.match(reference)
-    
-      systems = System.parse_systems(provider).keys()
-    
-      if m:
-      
-        values = m.groupdict()
-      
-        if values["system"] in systems:
-          key = "%(system)s/%(number)s" % values
-
-          if values["label"] == None:
-            values["label"] = "default"
-          
-          values["label_index"] = key
-
-          root._parse_ref[reference] = (key, values)
-          
-        else:
-          root._parse_ref[reference] = (None, None)
-          
-      else:
-        root._parse_ref[reference] = (None, None)
-        
-    return root._parse_ref[reference]
-
-  def sync(self): 
-
-    if not self.isroot:
-      values = self.provider.parse_tickets()[self.id]
-    
-      self._reference = self.id
-      self._system_index = values["system"]
-      self._number = values["number"]
-      
-    else:
-      self._parse_ref = {}
-      
-    Record.sync(self)
     
   @property
+  @cache
   def system(self):
-    
-    if self._system == None:
-      self._system = System(self._provider)[self._system_index]
-      
-    return self._system
+    return System(self._provider)[self.provider.parse_tickets()[self.id]["system"]]
 
   def label_keys(self):
     return self.provider.parse_tickets()[self.id]["labels"]
 
   @property
+  @cache
   def labels(self):
     return dict([(k, Label(self._provider)[k]) for k in self.label_keys()])
 
   @property
   def number(self):
-    return self._number
+    return self.provider.parse_tickets()[self.id]["number"]
 
   @property
+  @cache
   def patch(self):      
     f = open(self.provider.ticket_patch(self.id))
     d = f.read()
@@ -931,60 +868,22 @@ class Provider(object):
     
   def __getitem__(self, cls):
     return self.__provides__[cls]
-  
-class cache_type(type):
-
-  def __init__(cls, classname, bases, classdict):
-    super(cache_type, cls).__init__(classname, bases, classdict)
-    setattr(cls, '__cache__', {})
-
-class Cache(object):
-  
-  __metaclass__ = cache_type
-
-  def __init__(self, key=lambda x : x, synced=lambda x : True, sync=lambda x : None ):
-    self.key = key
-    self.synced = synced
-    self.sync = sync
-
-  @classmethod
-  def clear(self):
-    self.__cache__ = {}
-     
-  def __call__(self, func):
-    
-    def cache(*args, **kwargs):
-      
-      key = self.key(args)
-      
-      if not self.synced(args):
-        self.sync(args)
-        self.clear()
-
-      if not self.__cache__.has_key(func):
-        self.__cache__[func] = {}
-
-      if not self.__cache__[func].has_key(key):
-        self.__cache__[func][key] = func(*args, **kwargs)
-        
-      return self.__cache__[func][key]
-      
-    return cache
-
-_cache = Cache(synced=lambda a : a[0].synced, sync=lambda a : a[0].sync())
-
-def cache(func):
-  return _cache(func)
     
 class BugBox(Provider):
 
   def __init__(self, path):
     
     self._path = path
+
+    #Make time stamp for syncing
+    stamp =  os.path.join(self._path, STAMP)
+    if not os.path.exists(stamp):
+      with file(stamp, 'a'):
+        os.utime(stamp, None)
+
     self._paths = [
       os.path.join(self._path, "config"),
-      os.path.join(self._path, "objects"),
-      os.path.join(self._path, "objects", "pack")
+      stamp
     ]
     self._parse_systems = None
     self._modified = None
@@ -1001,16 +900,17 @@ class BugBox(Provider):
     
   @property
   def modified(self):
-    # print datetime.fromtimestamp(max(*[os.stat(p)[stat.ST_MTIME] for p in self._paths])), [str(datetime.fromtimestamp(os.stat(p)[stat.ST_MTIME])) for p in self._paths]
     return max(*[os.stat(p)[stat.ST_MTIME] for p in self._paths])
     
   @property
   def synced(self):
     return self.modified == self._modified
-    
+  
+  @log
   def sync(self):
     self._modified = self.modified
     
+  @log
   def call(self, *args, **kwargs):
     p = subprocess.Popen(args, cwd=kwargs.get("cwd", os.getcwd()), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     o, e = p.communicate()
@@ -1329,9 +1229,6 @@ class BugBox(Provider):
   @cache
   def parse_history(self, head, tail):
     
-    if head == tail:
-      return [head,]
-
     o, e, v = self.git("rev-list", '%s..%s' % (tail, head))
 
     if v != 0:
@@ -1362,10 +1259,6 @@ class BugBox(Provider):
         return (key, values)
 
       return  (None, None)
-    
-  @Cache("test")
-  def test(self, value):
-    return value.lower()
     
   @property
   def systems(self):
