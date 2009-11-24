@@ -205,9 +205,7 @@ a pre { color: inherit; }
 }
 
 .message .content {
-    width: 100%;
     margin-left: 60px;
-    margin-right: 60px;
 }
 
 .message .header .author { font-weight: bold;}

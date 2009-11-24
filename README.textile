@@ -39,11 +39,11 @@ git config ticket.bz.url http://bugzilla.example.com
 Add GIT hooks:
 
 <pre>
-cat > $GIT_DIR/hooks/update << EOF
+cat > $GIT_DIR/hooks/pre-receive << EOF
 #! /bin/bash
 
 read oldrev newrev ref
-bugbox hook pre-receive $ref $oldrev $newrev
+bugbox hook pre-receive \$ref \$oldrev \$newrev
 EOF
 </pre>
 
